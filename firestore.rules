@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+    
+    // Check if user is signed in
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the owner of the document (userId matches auth uid)
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if user is an Admin
+    function isAdmin(appId) {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/artifacts/$(appId)/users/$(request.auth.uid)).data.role == 'super_admin';
+    }
+
+    // --- Rules ---
+
+    // 1. Slugs (Public Read, Auth Write)
+    // Used to look up which user/card owns a slug
+    match /artifacts/{appId}/public/data/slugs/{slug} {
+      allow read: if true;
+      allow write: if isAuthenticated(); // Application logic handles uniqueness, but we allow auth users to reserve
+    }
+
+    // 1.1 Custom Domains (Public Read, Auth Write)
+    match /artifacts/{appId}/public/data/domains/{domain} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // 2. Users Collection
+    match /artifacts/{appId}/users/{userId} {
+      // Owner can read/write their own profile. Admin can access all.
+      // Data in this document is not highly sensitive (email, plan), so public read is allowed for plan checks.
+      allow read: if true; 
+      allow write: if isOwner(userId) || isAdmin(appId);
+      
+      // 3. Employees (The Digital Cards)
+      match /employees/{empId} {
+        // Public Read: Required for visitors to see the card
+        allow read: if true;
+        // Write: Only Owner or Admin
+        allow write: if isOwner(userId) || isAdmin(appId);
+
+        // 4. Products (Subcollection of Employee)
+        match /products/{productId} {
+          allow read: if true;
+          allow write: if isOwner(userId) || isAdmin(appId);
+        }
+
+        // 4.1. Portfolio (Subcollection of Employee)
+        match /portfolio/{itemId} {
+          allow read: if true;
+          allow write: if isOwner(userId) || isAdmin(appId);
+        }
+
+        // 5. Leads (Sensitive Data)
+        match /leads/{leadId} {
+          // Public Create: Visitors can submit forms
+          allow create: if true;
+          // Read/Update/Delete: Only Owner or Admin
+          allow read, update, delete: if isOwner(userId) || isAdmin(appId);
+        }
+
+        // 6. Analytics Events
+        match /analytics_events/{eventId} {
+          // Public Create: Metrics tracking
+          allow create: if true;
+          // Read/Update/Delete: Only Owner or Admin
+          // Read/Update/Delete: Only Owner or Admin
+          allow read, delete: if isOwner(userId) || isAdmin(appId);
+          // Allow update if owner OR if only updating stats (public view counter)
+          allow update: if isOwner(userId) || isAdmin(appId) || 
+                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats']));
+        }
+      }
+
+      // 7. Public Info (Plan Status, etc.)
+      match /public_info/{docId} {
+        allow read: if true;
+        allow write: if isOwner(userId) || isAdmin(appId);
+      }
+    }
+  }
+}
