@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
-import { Mail, Building, CreditCard, Calendar, Trash2, Edit } from 'lucide-react';
+import { Mail, Building, CreditCard, Trash2, Edit } from 'lucide-react';
 import EditUserModal from '../../components/modals/EditUserModal';
 
 export default function AdminView({ t }) {

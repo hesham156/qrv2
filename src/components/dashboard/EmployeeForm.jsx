@@ -3,7 +3,7 @@ import { collection, addDoc, doc, getDoc, deleteDoc, updateDoc, serverTimestamp,
 import { appId, db } from "../../config/firebase";
 import {
   Building2, Crown, LayoutTemplate, LinkIcon, Palette, User, X, Globe,
-  Phone, Mail, Share2, Image as ImageIcon, Briefcase, AtSign, Activity
+  Phone, Mail, Share2, Image as ImageIcon, Briefcase, Activity
 } from "lucide-react";
 
 export default function EmployeeForm({ onClose, initialData, userId, user, t }) {

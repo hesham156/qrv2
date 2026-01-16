@@ -1,7 +1,6 @@
 import { CreditCard, Wallet, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { appId } from "../../config/firebase";
 
 export default function WalletPreviewModal({ type, data, onClose, t }) {
   const isApple = type === 'apple';

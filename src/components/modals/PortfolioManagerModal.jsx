@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { collection, addDoc, doc, onSnapshot, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { appId, db } from "../../config/firebase";
-import { Briefcase, Plus, Trash2, X, Lock, Image as ImageIcon } from "lucide-react";
-import { isItemLocked } from "../../utils/planHelpers";
+import { Briefcase, Plus, Trash2, X, Image as ImageIcon } from "lucide-react";
 
 export default function PortfolioManagerModal({ userId, employee, onClose, t, user, onUpgrade }) {
     const [items, setItems] = useState([]);
@@ -114,7 +113,6 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {items.map((item, index) => {
                                     // Reuse logic or make it free for all
-                                    const isLocked = false;
                                     return (
                                         <div key={item.id} className="relative">
                                             <div className="bg-white p-3 rounded-xl border border-slate-200 flex gap-3 relative group">

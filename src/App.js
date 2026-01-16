@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db, appId } from './config/firebase';
 import { translations } from './utils/translations';
 import ProfileSkeleton from './components/skeletons/ProfileSkeleton';
@@ -26,14 +26,11 @@ const PageLoader = () => (
   </div>
 );
 
-// Layouts (We will define this inline for now or import later)
-const LandingLayout = ({ children }) => <>{children}</>;
 
 // --- Helper Component for PWA & Global Logic ---
 function AppLogic({ children }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const location = useLocation();
-  const navigate = useNavigate();
 
   // PWA & Manifest Logic
   useEffect(() => {

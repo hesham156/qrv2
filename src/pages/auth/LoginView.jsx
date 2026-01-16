@@ -4,7 +4,6 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import { AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { translations } from '../../utils/translations';
 import { useSEO } from '../../hooks/useSEO';
 import AuthLayout from '../../layouts/AuthLayout';
 
@@ -15,7 +14,6 @@ export default function LoginView({ lang, toggleLang, t }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();

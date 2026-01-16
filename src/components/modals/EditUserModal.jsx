@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
-import { X, Save, Calendar, Crown } from 'lucide-react';
+import { X, Save, Calendar } from 'lucide-react';
 
 export default function EditUserModal({ user, onClose, onUpdate, t }) {
     const [plan, setPlan] = useState(user.plan || 'free');
@@ -48,8 +48,8 @@ export default function EditUserModal({ user, onClose, onUpdate, t }) {
                                     type="button"
                                     onClick={() => setPlan(p)}
                                     className={`py-2 px-2 text-xs font-bold rounded-lg border-2 capitalize transition-all ${plan === p
-                                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                                            : 'border-slate-200 text-slate-500 hover:border-indigo-200'
+                                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                        : 'border-slate-200 text-slate-500 hover:border-indigo-200'
                                         }`}
                                 >
                                     {p}
