@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Home, MoveLeft, SearchX, HelpCircle } from 'lucide-react';
+import { Home, SearchX, HelpCircle } from 'lucide-react';
 
 export default function NotFound({
     title = "404",

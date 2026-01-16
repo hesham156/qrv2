@@ -54,12 +54,12 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
   // ... (rest of the file content)
 
 
-  const toText = (v) => {
+  const toText = useCallback((v) => {
     if (v == null) return '';
     if (typeof v === 'string' || typeof v === 'number') return String(v);
     if (typeof v === 'object') return String(v?.[L] ?? v?.ar ?? v?.en ?? '');
     return '';
-  };
+  }, [L]);
 
   const pick = (arField, enField, legacyField) => {
     const ar = toText(arField);
@@ -415,7 +415,7 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
       setLeadInterest(`${t.orderInterest} ${toText(prod?.name) || ''}`);
       setIsLeadFormOpen(true);
     }
-  }, [trackClick, t]);
+  }, [trackClick, t, toText]);
 
   // ---------- vCard ----------
   const downloadVCard = useCallback(() => {
@@ -444,7 +444,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [data, nameText, isCompany, companyText, jobTitleText, trackClick]);
+  }, [data, nameText, isCompany, companyText, jobTitleText, trackClick, toText]);
 
 
 
@@ -523,7 +523,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         <StatPill icon={<ImageIcon size={16} />} label={t?.scans || "Scans"} value={totalScans} />
       </div>
     </div>
-  ), [headerStyle, data?.bgVideoUrl, t, toggleLang, L, totalViews, totalScans]);
+  ), [headerStyle, data?.bgVideoUrl, t, toggleLang, L, totalViews, totalScans, template, themeColor, toText]);
 
   const AvatarView = useMemo(() => (
     <div className={`absolute right-1/2 translate-x-1/2 ${template === 'modern_pro' ? '-top-20 w-32 h-32 rounded-[2rem] border-8' : '-top-10 w-24 h-24 rounded-3xl border-4'} border-white/10 shadow-2xl bg-white overflow-hidden flex items-center justify-center transition-all duration-500`}>
@@ -548,7 +548,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         )}
       </div>
     </div>
-  ), [data?.profileVideoUrl, data?.photoUrl, nameText, template]);
+  ), [data?.profileVideoUrl, data?.photoUrl, nameText, template, toText]);
 
   const ActionButton = ({ icon, label, onClick, href, className = "", targetBlank = false }) => {
     const content = (
@@ -752,7 +752,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         </button>
       </div>
     </div>
-  ), [nameText, jobTitleText, companyText, data, themeColor, t, trackClick, btnBase, palette.glow, downloadVCard]);
+  ), [nameText, jobTitleText, companyText, data, themeColor, t, trackClick, btnBase, palette.glow, downloadVCard, template, toText]);
 
   const ProductsTabView = useMemo(() => (
     <div className="pt-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -799,7 +799,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         </div>
       )}
     </div>
-  ), [products, t, themeColor, palette.glow, btnBase, handleBuyProduct]);
+  ), [products, t, themeColor, palette.glow, btnBase, handleBuyProduct, toText]);
 
   const PortfolioTabView = useMemo(() => (
     <div className="pt-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -845,7 +845,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         </div>
       )}
     </div>
-  ), [portfolio, t, themeColor, palette.glow, btnBase, trackClick]);
+  ), [portfolio, t, themeColor, palette.glow, btnBase, trackClick, toText]);
 
 
 
