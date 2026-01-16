@@ -151,7 +151,7 @@ export default function RegisterView({ t }) {
             {step === 1 ? renderPlanSelection() : renderAccountForm()}
 
             <div className="mt-8 pt-8 border-t border-slate-100 text-center text-xs text-slate-400">
-                By creating an account, you agree to our <a href="#" className="underline">Terms</a> and <a href="#" className="underline">Privacy Policy</a>.
+                By creating an account, you agree to our <button type="button" onClick={() => alert("Terms Coming Soon")} className="underline hover:text-slate-600">Terms</button> and <button type="button" onClick={() => alert("Privacy Policy Coming Soon")} className="underline hover:text-slate-600">Privacy Policy</button>.
             </div>
         </AuthLayout>
     );

@@ -9,10 +9,6 @@ export default function StoriesManagerModal({ userId, employee, onClose, t }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
-  useEffect(() => {
-    loadStories();
-  }, [loadStories]);
-
   const loadStories = useCallback(async () => {
     try {
       const storiesRef = collection(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'stories');
@@ -27,6 +23,10 @@ export default function StoriesManagerModal({ userId, employee, onClose, t }) {
       setLoading(false);
     }
   }, [userId, employee.id]);
+
+  useEffect(() => {
+    loadStories();
+  }, [loadStories]);
 
   const handleSaveStory = async (storyData) => {
     try {
