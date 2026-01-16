@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 // Dashboard Component
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
-import { UserPlus, Download, LogOut, Plus, AlertCircle, Settings } from 'lucide-react';
+import { UserPlus, LogOut, Plus, AlertCircle } from 'lucide-react';
 // استيراد المكونات الفرعية
 import EmployeeCard from '../../components/dashboard/EmployeeCard'; // Keep eager for cards
 import EmployeeForm from '../../components/dashboard/EmployeeForm'; // Keep eager for speed or lazy? Form is heavy, maybe lazy.
@@ -13,7 +13,7 @@ import LeadsView from './LeadsView'; // Heavy
 import ProductsView from './ProductsView';
 
 import { useSEO } from '../../hooks/useSEO';
-import { isItemLocked, getEffectivePlan } from '../../utils/planHelpers';
+import { isItemLocked } from '../../utils/planHelpers';
 
 // Lazy Load Modals
 const QRModal = lazy(() => import('../../components/modals/QRModal'));
@@ -32,7 +32,7 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
 
   const [employees, setEmployees] = useState([])
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [selectedEmployee, setSelectedEmployee] = useState(null) // State for QR Modal
+  // const [selectedEmployee, setSelectedEmployee] = useState(null) // Unused
   const [analyticsEmployee, setAnalyticsEmployee] = useState(null)
   const [leadsEmployee, setLeadsEmployee] = useState(null)
   const [previewEmployee, setPreviewEmployee] = useState(null)

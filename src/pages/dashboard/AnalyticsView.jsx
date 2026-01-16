@@ -12,11 +12,9 @@ import {
     PieChart,
     Pie,
     Cell,
-    BarChart,
-    Bar,
     Legend
 } from 'recharts';
-import { ArrowUpRight, MousePointer, Eye, Calendar } from 'lucide-react';
+import { ArrowUpRight, MousePointer, Eye } from 'lucide-react';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -120,7 +118,7 @@ export default function AnalyticsView({ employees = [], user }) {
         };
 
         fetchAllData();
-    }, [employees, dateRange]);
+    }, [employees, dateRange, user?.uid]);
 
     if (loading) return <div className="p-10 text-center animate-pulse">Loading Analytics...</div>;
 
