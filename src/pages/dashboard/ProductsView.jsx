@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, Package, ArrowRight, Plus } from 'lucide-react';
+import { ShoppingBag, Package, ArrowRight } from 'lucide-react';
 
 export default function ProductsView({ employees, onManageProducts, t }) {
     return (

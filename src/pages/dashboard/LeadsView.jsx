@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, getDocs, limit } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
-import { Download, Search, Filter, Phone, User, Calendar, MessageSquare } from 'lucide-react';
+import { Download, Search, Filter, Phone } from 'lucide-react';
 
 export default function LeadsView({ employees = [], user }) {
     const [leads, setLeads] = useState([]);

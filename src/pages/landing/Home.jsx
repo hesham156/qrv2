@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import LandingLayout from '../../layouts/LandingLayout';
-import { ArrowRight, CheckCircle, Smartphone, Zap, Globe, Shield, Share2, BarChart3 } from 'lucide-react';
+import { ArrowRight, Smartphone, Share2, BarChart3 } from 'lucide-react';
 import { useSEO } from '../../hooks/useSEO';
 
 export default function Home() {
