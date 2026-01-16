@@ -3,7 +3,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, appId } from '../../config/firebase';
 import { AlertCircle, Check, ArrowRight, ArrowLeft } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import AuthLayout from '../../layouts/AuthLayout';
 import { Button } from '../../components/ui/Button';
 import { useSEO } from '../../hooks/useSEO';
