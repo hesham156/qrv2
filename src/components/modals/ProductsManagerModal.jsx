@@ -93,7 +93,7 @@ export default function ProductsManagerModal({ userId, employee, onClose, t, use
                     <div key={prod.id} className="relative">
                       <div className="bg-white p-3 rounded-xl border border-slate-200 flex gap-3 relative group">
                         <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-                          {prod.imageUrl ? <img src={prod.imageUrl} className="w-full h-full object-cover" /> : <Package className="w-full h-full p-4 text-slate-300" />}
+                          {prod.imageUrl ? <img src={prod.imageUrl} className="w-full h-full object-cover" alt={prod.name} /> : <Package className="w-full h-full p-4 text-slate-300" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-slate-800 truncate">{prod.name}</div>

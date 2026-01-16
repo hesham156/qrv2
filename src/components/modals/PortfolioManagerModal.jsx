@@ -117,7 +117,7 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
                                         <div key={item.id} className="relative">
                                             <div className="bg-white p-3 rounded-xl border border-slate-200 flex gap-3 relative group">
                                                 <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-                                                    {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" /> : <ImageIcon className="w-full h-full p-4 text-slate-300" />}
+                                                    {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" alt={item.title || "Project"} /> : <ImageIcon className="w-full h-full p-4 text-slate-300" />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="font-bold text-slate-800 truncate">{item.title}</div>

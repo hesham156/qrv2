@@ -1,7 +1,7 @@
-import {addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp} from "firebase/firestore";
-import {useEffect, useState} from "react";
-import {appId, db} from "../../config/firebase";
-import {CircleDashed, PlayCircle, Plus, Trash2, X} from "lucide-react";
+import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp } from "firebase/firestore";
+import { useEffect, useState, useCallback } from "react";
+import { appId, db } from "../../config/firebase";
+import { CircleDashed, PlayCircle, Plus, Trash2, X } from "lucide-react";
 import StoryForm from "./StoryForm";
 
 export default function StoriesManagerModal({ userId, employee, onClose, t }) {
@@ -11,9 +11,9 @@ export default function StoriesManagerModal({ userId, employee, onClose, t }) {
 
   useEffect(() => {
     loadStories();
-  }, []);
+  }, [loadStories]);
 
-  const loadStories = async () => {
+  const loadStories = useCallback(async () => {
     try {
       const storiesRef = collection(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'stories');
       const snapshot = await getDocs(storiesRef);
@@ -26,7 +26,7 @@ export default function StoriesManagerModal({ userId, employee, onClose, t }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, employee.id]);
 
   const handleSaveStory = async (storyData) => {
     try {
