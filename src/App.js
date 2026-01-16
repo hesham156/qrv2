@@ -15,6 +15,7 @@ const Home = lazy(() => import('./pages/landing/Home'));
 const Pricing = lazy(() => import('./pages/landing/Pricing'));
 const Features = lazy(() => import('./pages/landing/Features'));
 const Contact = lazy(() => import('./pages/landing/Contact'));
+const PaymentSuccess = lazy(() => import('./pages/payment/PaymentSuccess'));
 const NotFound = lazy(() => import('./pages/utility/NotFound'));
 
 
@@ -254,6 +255,9 @@ export default function App() {
               <Route path="/register" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <RegisterView lang={lang} toggleLang={toggleLang} t={t} />} />
 
               {/* App */}
+              <Route path="/payment/success" element={<ProtectedRoute user={user}><PaymentSuccess /></ProtectedRoute>} />
+              <Route path="/payment/cancel" element={<Navigate to="/pricing" />} />
+
               <Route path="/dashboard" element={
                 <ProtectedRoute user={user}>
                   <Dashboard

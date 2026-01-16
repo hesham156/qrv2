@@ -2,14 +2,32 @@
 import { useEffect, useState } from "react";
 import { collection, addDoc, doc, onSnapshot, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { appId, db } from "../../config/firebase";
-import { Package, Plus, ShoppingBag, Trash2, X, Lock } from "lucide-react";
+import { Package, Plus, ShoppingBag, Trash2, X, Lock, Upload, Loader2 } from "lucide-react";
 import { isItemLocked } from "../../utils/planHelpers";
+import { uploadToWordPress } from "../../services/wordpressStorage";
 
 export default function ProductsManagerModal({ userId, employee, onClose, t, user, onUpgrade }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newProduct, setNewProduct] = useState({ name: '', price: '', description: '', imageUrl: '', link: '' });
+
   const [isAdding, setIsAdding] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadToWordPress(file);
+      setNewProduct(prev => ({ ...prev, imageUrl: url }));
+    } catch (error) {
+      alert("Upload failed: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Fetch Products
   useEffect(() => {
@@ -74,7 +92,14 @@ export default function ProductsManagerModal({ userId, employee, onClose, t, use
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input required value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} className="px-3 py-2 border rounded-lg text-sm" placeholder={t.prodName} />
               <input value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className="px-3 py-2 border rounded-lg text-sm" placeholder={t.prodPrice} />
-              <input value={newProduct.imageUrl} onChange={e => setNewProduct({ ...newProduct, imageUrl: e.target.value })} className="px-3 py-2 border rounded-lg text-sm dir-ltr" placeholder={t.prodImg} dir="ltr" />
+              <input value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className="px-3 py-2 border rounded-lg text-sm" placeholder={t.prodPrice} />
+              <div className="flex gap-2">
+                <input value={newProduct.imageUrl} onChange={e => setNewProduct({ ...newProduct, imageUrl: e.target.value })} className="flex-1 px-3 py-2 border rounded-lg text-sm dir-ltr" placeholder={t.prodImg} dir="ltr" />
+                <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 rounded-lg flex items-center justify-center transition-colors">
+                  <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploading} />
+                  {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+                </label>
+              </div>
               <input value={newProduct.link} onChange={e => setNewProduct({ ...newProduct, link: e.target.value })} className="px-3 py-2 border rounded-lg text-sm dir-ltr" placeholder={t.prodLink} dir="ltr" />
               <textarea value={newProduct.description} onChange={e => setNewProduct({ ...newProduct, description: e.target.value })} className="col-span-1 md:col-span-2 px-3 py-2 border rounded-lg text-sm" placeholder={t.prodDesc} rows="2"></textarea>
             </div>

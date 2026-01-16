@@ -1,9 +1,12 @@
+
 import { useEffect, useState } from "react";
 import { collection, addDoc, doc, getDoc, deleteDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { uploadToWordPress } from "../../services/wordpressStorage";
+import { extractTextFromPDF, parseCVText } from "../../services/cvParser";
 import { appId, db } from "../../config/firebase";
 import {
   Building2, Crown, LayoutTemplate, LinkIcon, Palette, User, X, Globe,
-  Phone, Mail, Share2, Image as ImageIcon, Briefcase, Activity
+  Phone, Mail, Share2, Image as ImageIcon, Briefcase, Activity, Upload, Loader2, CreditCard, Type, Copy, Wand
 } from "lucide-react";
 
 export default function EmployeeForm({ onClose, initialData, userId, user, t }) {
@@ -47,6 +50,43 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t }) 
       }));
     }
   }, [initialData]);
+
+  // --- Magic Upload Handler ---
+  const handleMagicUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    try {
+      // 1. Upload CV file to WordPress first (so we have the URL)
+      const cvUrl = await uploadToWordPress(file);
+
+      // 2. Parse PDF Text
+      const text = await extractTextFromPDF(file);
+      const parsed = parseCVText(text);
+
+      // 3. Auto-fill Form
+      setFormData(prev => ({
+        ...prev,
+        cvUrl: cvUrl, // Save the actual CV
+        name: parsed.name || prev.name,
+        name_ar: prev.name_ar, // Don't overwrite if existing
+        name_en: parsed.name || prev.name_en, // Prioritize English for CV
+        email: parsed.email || prev.email,
+        phone: parsed.phone || prev.phone,
+        jobTitle: parsed.jobTitle || prev.jobTitle,
+        jobTitle_en: parsed.jobTitle || prev.jobTitle_en,
+        website: parsed.website || prev.website
+      }));
+
+      window.alert(t?.magicSuccess || "Magic! Data extracted from CV ✨");
+    } catch (err) {
+      console.error(err);
+      window.alert(t?.magicError || "Could not parse CV. Please fill manually.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -169,7 +209,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t }) 
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 flex items-center justify-center gap-2 py-4 px-4 text-sm font-bold border-b-2 transition-all whitespace-nowrap
-                  ${isActive ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+                  ${isActive ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'} `}
               >
                 <Icon size={18} />
                 {tab.label}
@@ -185,10 +225,41 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t }) 
             {/* --- GENERAL TAB --- */}
             {activeTab === 'general' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+
+                {/* Magic Upload Button */}
+                {!initialData && (
+                  <div className="bg-gradient-to-r from-violet-600 to-indigo-600 p-1 rounded-xl shadow-lg mb-6">
+                    <label className="flex items-center justify-between bg-white/10 hover:bg-white/20 transition-colors p-4 rounded-lg cursor-pointer group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                          <Wand size={20} className="group-hover:animate-pulse" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-white text-sm">
+                            {t?.magicUpload || "Resume Auto-fill ✨"}
+                          </h3>
+                          <p className="text-white/80 text-xs">
+                            {t?.magicDesc || "Upload a PDF CV to automatically fill this form."}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">
+                        {t?.uploadCV || "Upload PDF"}
+                      </div>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        className="hidden"
+                        onChange={handleMagicUpload}
+                      />
+                    </label>
+                  </div>
+                )}
+
                 {/* Profile Type */}
                 <div className="flex bg-slate-100 p-1 rounded-xl">
-                  <button type="button" onClick={() => setFormData({ ...formData, profileType: 'employee' })} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${formData.profileType === 'employee' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}><User size={16} /> {t.profileTypeEmp}</button>
-                  <button type="button" onClick={() => setFormData({ ...formData, profileType: 'company' })} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${formData.profileType === 'company' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}><Building2 size={16} /> {t.profileTypeComp}</button>
+                  <button type="button" onClick={() => setFormData({ ...formData, profileType: 'employee' })} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${formData.profileType === 'employee' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'} `}><User size={16} /> {t.profileTypeEmp}</button>
+                  <button type="button" onClick={() => setFormData({ ...formData, profileType: 'company' })} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${formData.profileType === 'company' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'} `}><Building2 size={16} /> {t.profileTypeComp}</button>
                 </div>
 
                 {/* Name & Job */}
@@ -270,7 +341,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t }) 
                 </div>
 
                 {/* Custom Domain (PRO) */}
-                <div className={`p-4 rounded-xl border ${user?.plan !== 'pro' ? 'bg-slate-50 border-slate-200 opacity-70 relative overflow-hidden' : 'bg-purple-50 border-purple-100'}`}>
+                <div className={`p - 4 rounded - xl border ${user?.plan !== 'pro' ? 'bg-slate-50 border-slate-200 opacity-70 relative overflow-hidden' : 'bg-purple-50 border-purple-100'} `}>
                   {user?.plan !== 'pro' && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-100/50 backdrop-blur-[1px]">
                       <div className="bg-white px-4 py-2 rounded-full shadow-lg border border-slate-200 flex items-center gap-2 text-xs font-bold text-slate-800">
@@ -351,7 +422,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t }) 
                   { key: 'youtube', label: 'YouTube', color: 'text-red-600' },
                 ].map(social => (
                   <div key={social.key}>
-                    <label className={`block text-xs font-bold mb-1 ${social.color}`}>{social.label}</label>
+                    <label className={`block text - xs font - bold mb - 1 ${social.color} `}>{social.label}</label>
                     <input
                       type="url"
                       dir="ltr"
@@ -360,161 +431,165 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t }) 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm"
                       placeholder={`https://${social.key.toLowerCase()}.com/...`}
                     />
-                  </div>
+                  </div >
                 ))}
-              </div>
+              </div >
             )}
 
             {/* --- DESIGN TAB --- */}
-            {activeTab === 'design' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {
+              activeTab === 'design' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
 
-                {/* Visuals */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><ImageIcon size={16} /> {isCompany ? t.logoUrl : t.photoUrl}</label>
-                    <input type="url" dir="ltr" value={formData.photoUrl} onChange={e => setFormData({ ...formData, photoUrl: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm" placeholder="https://" />
+                  {/* Visuals */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><ImageIcon size={16} /> {isCompany ? t.logoUrl : t.photoUrl}</label>
+                      <input type="url" dir="ltr" value={formData.photoUrl} onChange={e => setFormData({ ...formData, photoUrl: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm" placeholder="https://" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><LinkIcon size={16} /> {isCompany ? t.profilePdf : t.cvPdf}</label>
+                      <input type="url" dir="ltr" value={formData.cvUrl} onChange={e => setFormData({ ...formData, cvUrl: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm" placeholder="https://" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><LinkIcon size={16} /> {isCompany ? t.profilePdf : t.cvPdf}</label>
-                    <input type="url" dir="ltr" value={formData.cvUrl} onChange={e => setFormData({ ...formData, cvUrl: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm" placeholder="https://" />
+
+                  {/* Templates */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><LayoutTemplate size={18} /> {t.template}</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {templates.map(tmp => (
+                        <button key={tmp.id} type="button" onClick={() => setFormData({ ...formData, template: tmp.id })} className={`py-3 px-2 text-xs font-bold rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 relative ${formData.template === tmp.id ? 'border-primary-500 bg-white text-primary-700 shadow-md transform scale-105' : 'border-slate-200 bg-slate-100 text-slate-500 hover:bg-white'}`} style={formData.template === tmp.id ? { borderColor: formData.themeColor, color: formData.themeColor } : {}}>
+                          {tmp.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Colors */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-bold text-slate-700 flex items-center gap-2"><Palette size={18} /> {t.cardColor}</label>
+                      <input type="color" value={formData.themeColor} onChange={e => setFormData({ ...formData, themeColor: e.target.value })} className="w-8 h-8 rounded-lg cursor-pointer border-none" />
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {['#2563eb', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#000000', '#4f46e5'].map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, themeColor: c })}
+                          className={`w-8 h-8 rounded-full border-2 transition-all ${formData.themeColor === c ? 'border-slate-600 scale-110' : 'border-transparent hover:scale-110'}`}
+                          style={{ backgroundColor: c }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Videos */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">{t.bgVideo}</label>
+                      <input type="url" dir="ltr" value={formData.bgVideoUrl} onChange={e => setFormData({ ...formData, bgVideoUrl: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none" placeholder="MP4 URL" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">{t.profileVideo}</label>
+                      <input type="url" dir="ltr" value={formData.profileVideoUrl} onChange={e => setFormData({ ...formData, profileVideoUrl: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none" placeholder="MP4 URL" />
+                    </div>
                   </div>
                 </div>
-
-                {/* Templates */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><LayoutTemplate size={18} /> {t.template}</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {templates.map(tmp => (
-                      <button key={tmp.id} type="button" onClick={() => setFormData({ ...formData, template: tmp.id })} className={`py-3 px-2 text-xs font-bold rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 relative ${formData.template === tmp.id ? 'border-primary-500 bg-white text-primary-700 shadow-md transform scale-105' : 'border-slate-200 bg-slate-100 text-slate-500 hover:bg-white'}`} style={formData.template === tmp.id ? { borderColor: formData.themeColor, color: formData.themeColor } : {}}>
-                        {tmp.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Colors */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-bold text-slate-700 flex items-center gap-2"><Palette size={18} /> {t.cardColor}</label>
-                    <input type="color" value={formData.themeColor} onChange={e => setFormData({ ...formData, themeColor: e.target.value })} className="w-8 h-8 rounded-lg cursor-pointer border-none" />
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {['#2563eb', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#000000', '#4f46e5'].map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, themeColor: c })}
-                        className={`w-8 h-8 rounded-full border-2 transition-all ${formData.themeColor === c ? 'border-slate-600 scale-110' : 'border-transparent hover:scale-110'}`}
-                        style={{ backgroundColor: c }}
-                        title={c}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Videos */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">{t.bgVideo}</label>
-                    <input type="url" dir="ltr" value={formData.bgVideoUrl} onChange={e => setFormData({ ...formData, bgVideoUrl: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none" placeholder="MP4 URL" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">{t.profileVideo}</label>
-                    <input type="url" dir="ltr" value={formData.profileVideoUrl} onChange={e => setFormData({ ...formData, profileVideoUrl: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none" placeholder="MP4 URL" />
-                  </div>
-                </div>
-              </div>
-            )}
+              )
+            }
 
             {/* --- TRACKING TAB --- */}
-            {activeTab === 'tracking' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                  <h3 className="font-bold text-blue-800 text-sm mb-1">{t.trackingTitle || "Marketing & Tracking"}</h3>
-                  <p className="text-xs text-blue-600">
-                    {t.trackingDesc || "Add your pixel IDs to track visitors and create retargeting audiences."}
-                  </p>
+            {
+              activeTab === 'tracking' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                    <h3 className="font-bold text-blue-800 text-sm mb-1">{t.trackingTitle || "Marketing & Tracking"}</h3>
+                    <p className="text-xs text-blue-600">
+                      {t.trackingDesc || "Add your pixel IDs to track visitors and create retargeting audiences."}
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Facebook */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#1877F2]"></span>
+                        Facebook Pixel ID
+                      </label>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={formData.pixels?.facebook || ''}
+                        onChange={e => setFormData({ ...formData, pixels: { ...formData.pixels, facebook: e.target.value } })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-mono"
+                        placeholder="e.g. 1234567890123456"
+                      />
+                    </div>
+
+                    {/* TikTok */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-black"></span>
+                        TikTok Pixel ID
+                      </label>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={formData.pixels?.tiktok || ''}
+                        onChange={e => setFormData({ ...formData, pixels: { ...formData.pixels, tiktok: e.target.value } })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-mono"
+                        placeholder="e.g. C5N8V..."
+                      />
+                    </div>
+
+                    {/* Snapchat */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#FFFC00] border border-gray-200"></span>
+                        Snapchat Pixel ID
+                      </label>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={formData.pixels?.snapchat || ''}
+                        onChange={e => setFormData({ ...formData, pixels: { ...formData.pixels, snapchat: e.target.value } })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-mono"
+                        placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      />
+                    </div>
+
+                    {/* Google */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#4285F4]"></span>
+                        Google Analytics (G-XXXX)
+                      </label>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={formData.pixels?.google || ''}
+                        onChange={e => setFormData({ ...formData, pixels: { ...formData.pixels, google: e.target.value } })}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-mono"
+                        placeholder="e.g. G-MEASUREMENT_ID"
+                      />
+                    </div>
+                  </div>
                 </div>
+              )
+            }
 
-                <div className="space-y-4">
-                  {/* Facebook */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#1877F2]"></span>
-                      Facebook Pixel ID
-                    </label>
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={formData.pixels?.facebook || ''}
-                      onChange={e => setFormData({ ...formData, pixels: { ...formData.pixels, facebook: e.target.value } })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-mono"
-                      placeholder="e.g. 1234567890123456"
-                    />
-                  </div>
-
-                  {/* TikTok */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-black"></span>
-                      TikTok Pixel ID
-                    </label>
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={formData.pixels?.tiktok || ''}
-                      onChange={e => setFormData({ ...formData, pixels: { ...formData.pixels, tiktok: e.target.value } })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-mono"
-                      placeholder="e.g. C5N8V..."
-                    />
-                  </div>
-
-                  {/* Snapchat */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#FFFC00] border border-gray-200"></span>
-                      Snapchat Pixel ID
-                    </label>
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={formData.pixels?.snapchat || ''}
-                      onChange={e => setFormData({ ...formData, pixels: { ...formData.pixels, snapchat: e.target.value } })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-mono"
-                      placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    />
-                  </div>
-
-                  {/* Google */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#4285F4]"></span>
-                      Google Analytics (G-XXXX)
-                    </label>
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={formData.pixels?.google || ''}
-                      onChange={e => setFormData({ ...formData, pixels: { ...formData.pixels, google: e.target.value } })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm font-mono"
-                      placeholder="e.g. G-MEASUREMENT_ID"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-          </form>
-        </div>
+          </form >
+        </div >
 
         {/* Footer Actions */}
-        <div className="p-5 border-t border-slate-100 bg-white shrink-0 flex gap-3 z-10">
+        < div className="p-5 border-t border-slate-100 bg-white shrink-0 flex gap-3 z-10" >
           <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors">{t.cancel}</button>
           <button form="empForm" type="submit" disabled={loading} className="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg transition-all hover:opacity-90 active:scale-[0.98]" style={{ backgroundColor: formData.themeColor }}>
             {loading ? t.saving : t.save}
           </button>
-        </div>
+        </div >
 
       </div >
     </div >

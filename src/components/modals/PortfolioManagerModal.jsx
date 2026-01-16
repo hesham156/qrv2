@@ -1,13 +1,38 @@
 import { useEffect, useState } from "react";
 import { collection, addDoc, doc, onSnapshot, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { appId, db } from "../../config/firebase";
-import { Briefcase, Plus, Trash2, X, Image as ImageIcon } from "lucide-react";
+import { Briefcase, Plus, Trash2, X, Image as ImageIcon, Upload, Loader2 } from "lucide-react";
+import { uploadToWordPress } from "../../services/wordpressStorage";
 
 export default function PortfolioManagerModal({ userId, employee, onClose, t, user, onUpgrade }) {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [newItem, setNewItem] = useState({ title: '', description: '', imageUrl: '', link: '' });
+    const [newItem, setNewItem] = useState({
+        title: '',
+        description: '',
+        imageUrl: '',
+        link: '',
+        category: 'other', // Default
+        mediaType: 'image', // image, video
+        videoUrl: ''
+    });
     const [isAdding, setIsAdding] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const url = await uploadToWordPress(file);
+            setNewItem(prev => ({ ...prev, imageUrl: url }));
+        } catch (error) {
+            alert("Upload failed: " + error.message);
+        } finally {
+            setUploading(false);
+        }
+    };
 
     // Fetch Portfolio Items
     useEffect(() => {
@@ -39,7 +64,7 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
                 ...newItem,
                 createdAt: serverTimestamp()
             });
-            setNewItem({ title: '', description: '', imageUrl: '', link: '' });
+            setNewItem({ title: '', description: '', imageUrl: '', link: '', category: 'other', mediaType: 'image', videoUrl: '' });
         } catch (error) {
             console.error(error);
         } finally {
@@ -80,13 +105,53 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
                                 className="col-span-1 md:col-span-2 px-3 py-2 border rounded-lg text-sm"
                                 placeholder={t.projectTitle || "Project Title"}
                             />
-                            <input
-                                value={newItem.imageUrl}
-                                onChange={e => setNewItem({ ...newItem, imageUrl: e.target.value })}
-                                className="px-3 py-2 border rounded-lg text-sm dir-ltr"
-                                placeholder={t.prodImg || "Image URL"}
-                                dir="ltr"
-                            />
+
+                            {/* Category & Type */}
+                            <div className="grid grid-cols-2 gap-3 md:col-span-2">
+                                <select
+                                    value={newItem.category}
+                                    onChange={e => setNewItem({ ...newItem, category: e.target.value })}
+                                    className="px-3 py-2 border rounded-lg text-sm bg-white"
+                                >
+                                    <option value="other">{t.catOther || "General / Other"}</option>
+                                    <option value="development">{t.catDev || "Development"}</option>
+                                    <option value="design">{t.catDesign || "Design"}</option>
+                                    <option value="video">{t.catVideo || "Video / Motion"}</option>
+                                    <option value="marketing">{t.catMarketing || "Marketing"}</option>
+                                </select>
+                                <select
+                                    value={newItem.mediaType}
+                                    onChange={e => setNewItem({ ...newItem, mediaType: e.target.value })}
+                                    className="px-3 py-2 border rounded-lg text-sm bg-white"
+                                >
+                                    <option value="image">{t.typeImage || "Image Project"}</option>
+                                    <option value="video">{t.typeVideo || "Video (YouTube/Vimeo)"}</option>
+                                </select>
+                            </div>
+
+                            {/* Video URL (Conditional) */}
+                            {newItem.mediaType === 'video' && (
+                                <input
+                                    value={newItem.videoUrl}
+                                    onChange={e => setNewItem({ ...newItem, videoUrl: e.target.value })}
+                                    className="col-span-1 md:col-span-2 px-3 py-2 border rounded-lg text-sm dir-ltr"
+                                    placeholder={t.videoUrl || "Video URL (YouTube, Vimeo...)"}
+                                    dir="ltr"
+                                />
+                            )}
+                            <div className="flex gap-2">
+                                <input
+                                    value={newItem.imageUrl}
+                                    onChange={e => setNewItem({ ...newItem, imageUrl: e.target.value })}
+                                    className="flex-1 px-3 py-2 border rounded-lg text-sm dir-ltr"
+                                    placeholder={t.prodImg || "Image URL"}
+                                    dir="ltr"
+                                />
+                                <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 rounded-lg flex items-center justify-center transition-colors">
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploading} />
+                                    {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+                                </label>
+                            </div>
                             <input
                                 value={newItem.link}
                                 onChange={e => setNewItem({ ...newItem, link: e.target.value })}

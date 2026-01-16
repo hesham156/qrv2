@@ -22,7 +22,10 @@ import {
   ImageIcon,
   ShieldCheck,
   Sparkles,
-  Briefcase // ✅
+  Briefcase,
+  X,
+  Heart,
+  Star
 } from 'lucide-react';
 
 import { isPlanActive } from '../../utils/planHelpers';
@@ -30,7 +33,9 @@ import ProfileSkeleton from '../../components/skeletons/ProfileSkeleton';
 
 // Lazy Load Modals
 const LeadCaptureModal = lazy(() => import('../../components/modals/LeadCaptureModal'));
+
 const WalletPreviewModal = lazy(() => import('../../components/modals/WalletPreviewModal'));
+const FollowModal = lazy(() => import('../../components/modals/FollowModal'));
 
 
 
@@ -38,12 +43,20 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
   const [data, setData] = useState(null);
   const [products, setProducts] = useState([]);
   const [portfolio, setPortfolio] = useState([]); // ✅
+  const [portfolioCategory, setPortfolioCategory] = useState('all'); // ✅
+  const [paymentConfig, setPaymentConfig] = useState(null); // ✅
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false); // ✅
+  const [selectedProductForPayment, setSelectedProductForPayment] = useState(null); // ✅
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info'); // info, products, portfolio
   const [error, setError] = useState(null);
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
   const [leadInterest, setLeadInterest] = useState('');
   const [showWalletModal, setShowWalletModal] = useState(null);
+
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followModalOpen, setFollowModalOpen] = useState(false); // ✅
+  const [rateModalOpen, setRateModalOpen] = useState(false); // ✅
   const isLogged = useRef(false);
   const productsLoaded = useRef(false);
   const portfolioLoaded = useRef(false); // ✅
@@ -105,6 +118,13 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
       profileData.id
     );
 
+    // Analytics: Tab Views
+    if (activeTab === 'products') {
+      logAnalyticsEvent(profileData.adminId, profileData.id, 'product_view', 'tab_active');
+    } else if (activeTab === 'portfolio') { // Assuming portfolio tab exists or will exist
+      logAnalyticsEvent(profileData.adminId, profileData.id, 'portfolio_view', 'tab_active');
+    }
+
     const userRef = doc(db, 'artifacts', appId, 'users', profileData.adminId);
 
     const fetchEmployee = async () => {
@@ -154,6 +174,10 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
 
         if (!cancelled) setData({ ...emp, isLocked });
         if (!cancelled) setLoading(false);
+
+        // Check local follow status
+        const followed = localStorage.getItem(`followed_${profileData.id}`);
+        if (followed) setIsFollowing(true);
 
         // ✅ analytics في الخلفية (بدون ما يوقف الواجهة)
         if (!isLogged.current) {
@@ -215,7 +239,18 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
       }
     };
 
+    const fetchPaymentConfig = async () => {
+      try {
+        const docRef = doc(db, 'artifacts', appId, 'users', profileData.adminId, 'employees', profileData.id, 'payment_settings', 'config');
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          setPaymentConfig(snap.data());
+        }
+      } catch (e) { }
+    };
+
     fetchEmployee();
+    fetchPaymentConfig();
 
     return () => {
       cancelled = true;
@@ -307,6 +342,100 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
     // potentially we could remove them but usually pixels stick around.
 
   }, [data]);
+
+  // ---------- Custom Font Injection (Pro) ----------
+  useEffect(() => {
+    if (!data?.customFont) return;
+
+    const fontId = 'custom-font-style';
+    const fontUrl = toText(data.customFont);
+
+    // Create generic font face
+    const styleContent = `
+      @font-face {
+        font-family: 'CustomProfileFont';
+        src: url('${fontUrl}') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+      .profile-view-container {
+        font-family: 'CustomProfileFont', sans-serif !important;
+      }
+      /* Override common text elements */
+      h1, h2, h3, h4, h5, h6, p, span, button, a, div {
+        font-family: 'CustomProfileFont', sans-serif !important;
+      }
+    `;
+
+    // Inject style tag
+    const existing = document.getElementById(fontId);
+    if (!existing) {
+      const style = document.createElement('style');
+      style.id = fontId;
+      style.innerHTML = styleContent;
+      document.head.appendChild(style);
+    } else {
+      existing.innerHTML = styleContent;
+    }
+
+    return () => {
+      // Cleanup on unmount or change
+      const el = document.getElementById(fontId);
+      if (el) el.remove();
+    };
+  }, [data?.customFont, toText]);
+
+  // ---------- Google Font Injection (Free/Pro) ----------
+  useEffect(() => {
+    // If custom font exists, it takes precedence (handled above).
+    // Only proceed if NO custom font and YES google font.
+    if (data?.customFont || !data?.googleFont) return;
+
+    const fontName = toText(data.googleFont);
+    const linkId = 'google-font-link';
+    const styleId = 'google-font-style';
+
+    // 1. Inject Link
+    if (!document.getElementById(linkId)) {
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}:wght@400;700&display=swap`;
+      document.head.appendChild(link);
+    } else {
+      // Update href if duplicate ID but different font (basic handling)
+      const link = document.getElementById(linkId);
+      link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}:wght@400;700&display=swap`;
+    }
+
+    // 2. Inject Style
+    const styleContent = `
+      .profile-view-container {
+        font-family: '${fontName}', sans-serif !important;
+      }
+      /* Override common text elements */
+      h1, h2, h3, h4, h5, h6, p, span, button, a, div {
+        font-family: '${fontName}', sans-serif !important;
+      }
+    `;
+
+    const existingStyle = document.getElementById(styleId);
+    if (!existingStyle) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.innerHTML = styleContent;
+      document.head.appendChild(style);
+    } else {
+      existingStyle.innerHTML = styleContent;
+    }
+
+    return () => {
+      // Cleanup style (keep link as it might be cached/useful)
+      const s = document.getElementById(styleId);
+      if (s) s.remove();
+    };
+  }, [data?.googleFont, data?.customFont, toText]);
 
   // ---------- Lazy Load Products (only when tab is products) ----------
   useEffect(() => {
@@ -409,13 +538,56 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
   }, [profileData?.adminId, profileData?.id]);
 
   const handleBuyProduct = useCallback((prod) => {
+    // Analytics: Product Click
+    logAnalyticsEvent(profileData.adminId, profileData.id, 'product_click', prod?.link ? 'link' : 'inquiry', {
+      productId: prod?.id,
+      productName: toText(prod?.name)
+    });
+
     trackClick(`buy_${toText(prod?.name) || 'product'}`);
-    if (prod?.link) window.open(toText(prod.link), '_blank');
-    else {
-      setLeadInterest(`${t.orderInterest} ${toText(prod?.name) || ''}`);
-      setIsLeadFormOpen(true);
+    if (prod?.link) {
+      window.open(toText(prod.link), '_blank');
+    } else {
+      // Check if any payment method is enabled
+      const hasPayment = paymentConfig && (
+        paymentConfig.stripe?.enabled ||
+        paymentConfig.tabby?.enabled ||
+        paymentConfig.tamara?.enabled
+      );
+
+      if (hasPayment) {
+        setSelectedProductForPayment(prod);
+        setPaymentModalOpen(true);
+      } else {
+        setLeadInterest(`${t.orderInterest} ${toText(prod?.name) || ''}`);
+        setIsLeadFormOpen(true);
+      }
     }
-  }, [trackClick, t, toText]);
+  }, [trackClick, t, toText, profileData, paymentConfig]);
+
+  const handlePaymentSelect = (method) => {
+    setPaymentModalOpen(false);
+
+    if (method === 'cash') {
+      setLeadInterest(`${t.orderInterest} ${toText(selectedProductForPayment?.name) || ''} (Cash)`);
+      setIsLeadFormOpen(true);
+    } else {
+      // Simulate Redirect
+      const prodName = toText(selectedProductForPayment?.name);
+      const price = selectedProductForPayment?.price || '0';
+
+      let logMsg = `Mock Redirect to ${method.toUpperCase()} for ${prodName} - Price: ${price}`;
+
+      if (method === 'stripe') {
+        // In a real app, you would call your backend here with paymentConfig.stripe.publishableKey
+        alert(`Redirecting to Stripe Checkout...\nProduct: ${prodName}\n(Using Key: ${paymentConfig.stripe.publishableKey})`);
+      } else if (method === 'tabby') {
+        alert(`Redirecting to Tabby Split Payment...\nProduct: ${prodName}\n(Merchant: ${paymentConfig.tabby.merchantCode})`);
+      } else if (method === 'tamara') {
+        alert(`Redirecting to Tamara Split Payment...\nProduct: ${prodName}`);
+      }
+    }
+  };
 
   // ---------- vCard ----------
   const downloadVCard = useCallback(() => {
@@ -447,6 +619,52 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
   }, [data, nameText, isCompany, companyText, jobTitleText, trackClick, toText]);
 
 
+
+  const handleFollowClick = () => {
+    if (isFollowing) return;
+    setFollowModalOpen(true);
+  };
+
+  const handleSmartFollowSuccess = () => {
+    setIsFollowing(true);
+    localStorage.setItem(`followed_${profileData.id}`, 'true');
+
+    // Optimistic Logic moved inside Modal for server, but we update UI here
+    setData(prev => ({
+      ...prev,
+      stats: {
+        ...prev.stats,
+        followers: (prev.stats?.followers || 0) + 1
+      }
+    }));
+    trackClick('follow_smart');
+  };
+
+  const handleRate = async (stars) => {
+    setRateModalOpen(false);
+    // Optimistic Update is tricky for average, but we can try basic increment
+    try {
+      const docRef = doc(db, 'artifacts', appId, 'users', profileData.adminId, 'employees', profileData.id);
+      await setDoc(docRef, {
+        stats: {
+          rating: increment(stars),
+          ratingCount: increment(1)
+        }
+      }, { merge: true });
+
+      // Manual optimistic data update so UI reflects immediately
+      setData(prev => ({
+        ...prev,
+        stats: {
+          ...prev.stats,
+          rating: (prev.stats?.rating || 0) + stars,
+          ratingCount: (prev.stats?.ratingCount || 0) + 1
+        }
+      }));
+
+      alert(t.thankYouRating || "Thank you for rating!");
+    } catch (e) { console.error("Rate error", e); }
+  };
 
   // ---------- UI building blocks ----------
   const btnBase =
@@ -518,12 +736,15 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         <Globe size={16} /> {L === 'ar' ? 'English' : 'عربي'}
       </button>
 
-      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3">
+      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3 overflow-x-auto hide-scrollbar">
         <StatPill icon={<Sparkles size={16} />} label={t?.views || "Views"} value={totalViews} />
-        <StatPill icon={<ImageIcon size={16} />} label={t?.scans || "Scans"} value={totalScans} />
+        <StatPill icon={<Briefcase size={16} />} label="Followers" value={data?.stats?.followers || 0} />
+        <button onClick={() => setRateModalOpen(true)}>
+          <StatPill icon={<Star size={16} className="text-yellow-400 fill-yellow-400" />} label="Rating" value={(data?.stats?.ratingCount > 0 ? (data.stats.rating / data.stats.ratingCount).toFixed(1) : '5.0')} />
+        </button>
       </div>
     </div>
-  ), [headerStyle, data?.bgVideoUrl, t, toggleLang, L, totalViews, totalScans, template, themeColor, toText]);
+  ), [headerStyle, data?.bgVideoUrl, t, toggleLang, L, totalViews, totalScans, template, themeColor, toText, data?.stats]);
 
   const AvatarView = useMemo(() => (
     <div className={`absolute right-1/2 translate-x-1/2 ${template === 'modern_pro' ? '-top-20 w-32 h-32 rounded-[2rem] border-8' : '-top-10 w-24 h-24 rounded-3xl border-4'} border-white/10 shadow-2xl bg-white overflow-hidden flex items-center justify-center transition-all duration-500`}>
@@ -713,6 +934,23 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
           }}
         />
 
+        {/* Follow Button (New) */}
+        {/* Follow Button (New) */}
+        {!isFollowing ? (
+          <button
+            onClick={handleFollowClick}
+            className={`w-full ${btnBase} px-4 py-4 text-slate-700 bg-slate-100/80 border border-slate-200 hover:bg-slate-200 hover:border-slate-300`}
+          >
+            <Heart size={18} className="text-pink-500" />
+            <span>{t.follow || "Follow Profile"}</span>
+          </button>
+        ) : (
+          <div className={`w-full ${btnBase} px-4 py-4 text-emerald-700 bg-emerald-50 border border-emerald-100 opacity-80 cursor-default`}>
+            <Heart size={18} className="fill-emerald-500 text-emerald-500" />
+            <span>{t.following || "Following"}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setShowWalletModal('apple')}
@@ -801,51 +1039,188 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
     </div>
   ), [products, t, themeColor, palette.glow, btnBase, handleBuyProduct, toText]);
 
-  const PortfolioTabView = useMemo(() => (
-    <div className="pt-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {portfolio.length === 0 ? (
-        <div className="text-center text-slate-400 py-12">
-          <Briefcase size={48} className="mx-auto mb-3 opacity-20" />
-          <p className="font-bold">{t.noProjects || "No projects yet"}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {portfolio.map((item) => (
-            <div key={item.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
-              <div className="h-44 w-full bg-slate-100 relative overflow-hidden group">
-                {item.imageUrl ? (
-                  <img src={toText(item.imageUrl)} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" loading="lazy" />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-slate-300">
-                    <ImageIcon size={32} />
-                  </div>
-                )}
-              </div>
+  const PortfolioTabView = useMemo(() => {
+    const categories = [
+      { id: 'all', label: t.catAll || 'All' },
+      { id: 'development', label: t.catDev || 'Dev' },
+      { id: 'design', label: t.catDesign || 'Design' },
+      { id: 'video', label: t.catVideo || 'Video' },
+      { id: 'marketing', label: t.catMarketing || 'Marketing' },
+      { id: 'other', label: t.catOther || 'Other' }
+    ];
 
-              <div className="p-5">
-                <h3 className="font-extrabold text-slate-900 text-lg mb-1">{toText(item.title)}</h3>
-                <p className="text-sm text-slate-500 line-clamp-3 mb-4">{toText(item.description)}</p>
+    const filteredItems = portfolio.filter(item =>
+      portfolioCategory === 'all' ? true : (item.category || 'other') === portfolioCategory
+    );
 
-                {item.link && (
-                  <a
-                    href={toText(item.link)}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => trackClick(`view_project_${item.id}`)}
-                    className={`w-full ${btnBase} py-3 text-white text-sm block text-center`}
-                    style={{ backgroundColor: themeColor, boxShadow: palette.glow }}
-                  >
-                    <ExternalLink size={18} />
-                    {t.viewProject || "View Project"}
-                  </a>
-                )}
-              </div>
+    const getEmbedUrl = (url) => {
+      if (!url) return null;
+      const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+      const vimeoMatch = url.match(/(?:vimeo\.com\/)(\d+)/);
+      if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+      return null;
+    };
+
+    // --- Helpers for Card Styles ---
+
+    // 1. Developer Card (Repo Style)
+    const DevCard = ({ item }) => (
+      <div className="bg-[#1e293b] rounded-xl overflow-hidden border border-slate-700 shadow-sm flex flex-col h-full group hover:border-slate-500 transition-colors">
+        <div className="p-5 flex flex-col h-full">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-2 bg-slate-800 rounded-lg text-blue-400">
+              <Briefcase size={20} />
             </div>
+            {item.link && (
+              <a href={toText(item.link)} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-white transition-colors">
+                <ExternalLink size={18} />
+              </a>
+            )}
+          </div>
+
+          <h3 className="font-mono font-bold text-white text-lg mb-2 line-clamp-1 group-hover:text-blue-400 transition-colors">{toText(item.title)}</h3>
+          <p className="text-slate-400 text-sm line-clamp-3 mb-4 flex-1 font-mono">{toText(item.description)}</p>
+
+          <div className="flex items-center gap-2 mt-auto">
+            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
+            <span className="text-xs text-slate-500 font-mono">JavaScript</span> {/* Placeholder for language */}
+          </div>
+        </div>
+      </div>
+    );
+
+    // 2. Designer Card (Gallery Style)
+    const DesignCard = ({ item }) => (
+      <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 relative group aspect-[4/3]">
+        {item.imageUrl ? (
+          <img src={toText(item.imageUrl)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={toText(item.title)} loading="lazy" />
+        ) : (
+          <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300"><ImageIcon size={32} /></div>
+        )}
+
+        {/* Overlay on Hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+          <h3 className="text-white font-bold text-lg translate-y-2 group-hover:translate-y-0 transition-transform duration-300">{toText(item.title)}</h3>
+          <p className="text-white/80 text-xs line-clamp-2 translate-y-2 group-hover:translate-y-0 transition-transform duration-300 delay-75">{toText(item.description)}</p>
+          {item.link && (
+            <a href={toText(item.link)} target="_blank" rel="noreferrer" className="absolute top-3 right-3 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-black transition-all">
+              <ExternalLink size={16} />
+            </a>
+          )}
+        </div>
+      </div>
+    );
+
+    // 3. Video Card (Cinema Style)
+    const VideoCard = ({ item }) => {
+      const embedUrl = getEmbedUrl(item.videoUrl);
+      return (
+        <div className="bg-black rounded-2xl overflow-hidden shadow-lg border border-slate-800">
+          <div className="aspect-video w-full bg-slate-900 relative">
+            {embedUrl ? (
+              <iframe
+                src={embedUrl}
+                title={toText(item.title)}
+                className="w-full h-full"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-600 font-mono text-xs">NO VIDEO URL</div>
+            )}
+          </div>
+          <div className="p-4 bg-slate-900">
+            <h3 className="text-white font-bold mb-1 flex items-center gap-2">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              {toText(item.title)}
+            </h3>
+            <p className="text-slate-400 text-xs line-clamp-1">{toText(item.description)}</p>
+          </div>
+        </div>
+      );
+    };
+
+    // 4. Standard Card (Default/Marketing)
+    const StandardCard = ({ item }) => (
+      <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+        <div className="h-44 w-full bg-slate-100 relative overflow-hidden group">
+          {item.imageUrl ? (
+            <img src={toText(item.imageUrl)} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" loading="lazy" />
+          ) : (
+            <div className="flex items-center justify-center h-full text-slate-300">
+              <ImageIcon size={32} />
+            </div>
+          )}
+        </div>
+
+        <div className="p-5">
+          <h3 className="font-extrabold text-slate-900 text-lg mb-1">{toText(item.title)}</h3>
+          <p className="text-sm text-slate-500 line-clamp-3 mb-4">{toText(item.description)}</p>
+
+          {item.link && (
+            <a
+              href={toText(item.link)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => {
+                trackClick(`view_project_${item.id}`);
+                logAnalyticsEvent(profileData.adminId, profileData.id, 'portfolio_click', 'view_project', { projectId: item.id });
+              }}
+              className={`w-full ${btnBase} py-3 text-white text-sm block text-center`}
+              style={{ backgroundColor: themeColor, boxShadow: palette.glow }}
+            >
+              <ExternalLink size={18} />
+              {t.viewProject || "View Project"}
+            </a>
+          )}
+        </div>
+      </div>
+    );
+
+
+    return (
+      <div className="pt-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Category Filter */}
+        <div className="flex gap-2 overflow-x-auto pb-4 hide-scrollbar mb-4 px-1">
+          {categories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setPortfolioCategory(cat.id)}
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${portfolioCategory === cat.id
+                ? 'text-white'
+                : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+                }`}
+              style={portfolioCategory === cat.id ? { backgroundColor: themeColor, boxShadow: palette.glow } : undefined}
+            >
+              {cat.label}
+            </button>
           ))}
         </div>
-      )}
-    </div>
-  ), [portfolio, t, themeColor, palette.glow, btnBase, trackClick, toText]);
+
+        {filteredItems.length === 0 ? (
+          <div className="text-center text-slate-400 py-12">
+            <Briefcase size={48} className="mx-auto mb-3 opacity-20" />
+            <p className="font-bold">{t.noProjects || "No projects in this category"}</p>
+          </div>
+        ) : (
+          <div className={`grid gap-4 ${portfolioCategory === 'design' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {filteredItems.map((item) => {
+              const cat = item.category || 'other';
+              const isVideo = item.mediaType === 'video';
+
+              if (cat === 'development') return <DevCard key={item.id} item={item} />;
+              if (cat === 'design') return <DesignCard key={item.id} item={item} />;
+              if (cat === 'video' || isVideo) return <VideoCard key={item.id} item={item} />;
+
+              return <StandardCard key={item.id} item={item} />;
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }, [portfolio, portfolioCategory, t, themeColor, palette.glow, btnBase, trackClick, toText]);
 
 
 
@@ -947,6 +1322,77 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
           <WalletPreviewModal type={showWalletModal} data={data} onClose={() => setShowWalletModal(null)} t={t} />
         </Suspense>
       )}
-    </div>
+
+      {/* Payment Selection Modal */}
+      {paymentModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-slate-800">{t.choosePayment || "Choose Payment Method"}</h3>
+              <button onClick={() => setPaymentModalOpen(false)}><X size={20} className="text-slate-400" /></button>
+            </div>
+            <div className="p-4 space-y-3">
+              {paymentConfig?.stripe?.enabled && (
+                <button onClick={() => handlePaymentSelect('stripe')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-3 group">
+                  <div className="w-10 h-6 bg-[#635BFF] rounded flex items-center justify-center text-white text-xs font-bold">Stripe</div>
+                  <span className="font-bold text-slate-700 group-hover:text-blue-700">{t.payCard || "Pay with Card"}</span>
+                </button>
+              )}
+              {paymentConfig?.tabby?.enabled && (
+                <button onClick={() => handlePaymentSelect('tabby')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all flex items-center gap-3 group">
+                  <div className="w-10 h-6 bg-[#3EEDA4] rounded flex items-center justify-center text-black text-xs font-bold">Tabby</div>
+                  <span className="font-bold text-slate-700 group-hover:text-emerald-700">{t.payTabby || "Split in 4 (Interest-free)"}</span>
+                </button>
+              )}
+              {paymentConfig?.tamara?.enabled && (
+                <button onClick={() => handlePaymentSelect('tamara')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-yellow-500 hover:bg-yellow-50 transition-all flex items-center gap-3 group">
+                  <div className="w-10 h-6 bg-[#ECC94B] rounded flex items-center justify-center text-black text-xs font-bold">Tamara</div>
+                  <span className="font-bold text-slate-700 group-hover:text-yellow-700">{t.payTamara || "Split in 3 (Interest-free)"}</span>
+                </button>
+              )}
+
+              <button onClick={() => handlePaymentSelect('cash')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-slate-500 hover:bg-slate-50 transition-all flex items-center gap-3 group mt-2">
+                <div className="w-10 h-6 bg-slate-200 rounded flex items-center justify-center text-slate-500 text-xs font-bold">$</div>
+                <span className="font-bold text-slate-700">{t.cod || "Cash / Inquiry"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Rate Modal */}
+      {rateModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center space-y-4">
+            <h3 className="font-bold text-xl text-slate-800">{t.rateProfile || "Rate this Profile"}</h3>
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map(star => (
+                <button key={star} onClick={() => handleRate(star)} className="p-2 hover:scale-110 transition-transform">
+                  <Star size={32} className="text-yellow-400 fill-yellow-400 drop-shadow-sm" />
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setRateModalOpen(false)} className="text-sm text-slate-400 font-bold hover:text-slate-600">
+              {t.cancel || "Cancel"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Follow Modal */}
+      {
+        followModalOpen && (
+          <Suspense fallback={null}>
+            <FollowModal
+              adminId={profileData.adminId}
+              employeeId={profileData.id}
+              themeColor={themeColor}
+              onClose={() => setFollowModalOpen(false)}
+              onSuccess={handleSmartFollowSuccess}
+              t={t}
+            />
+          </Suspense>
+        )
+      }
+    </div >
   );
 }

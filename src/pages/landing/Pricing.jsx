@@ -3,8 +3,44 @@ import LandingLayout from '../../layouts/LandingLayout';
 import { Check } from 'lucide-react';
 import { useSEO } from '../../hooks/useSEO';
 
+import { useNavigate } from 'react-router-dom';
+import { getAuth } from 'firebase/auth';
+import { createCheckoutSession } from '../../services/subscriptionService';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+
 export default function Pricing() {
     useSEO("Pricing", "Simple, transparent pricing for individuals and teams.");
+    const navigate = useNavigate();
+    const auth = getAuth();
+    const [loadingPlan, setLoadingPlan] = useState(null);
+
+    const handleSubscribe = async (plan) => {
+        if (!auth.currentUser) {
+            navigate('/register?plan=' + plan.toLowerCase());
+            return;
+        }
+
+        if (plan === 'Free') {
+            navigate('/dashboard');
+            return;
+        }
+
+        if (plan === 'Enterprise') {
+            window.location.href = 'mailto:sales@digicard.com';
+            return;
+        }
+
+        setLoadingPlan(plan);
+        try {
+            const result = await createCheckoutSession(auth.currentUser.uid, 'pro');
+            if (result.url) window.location.href = result.url;
+        } catch (error) {
+            alert("Payment Error: " + error.message);
+        } finally {
+            setLoadingPlan(null);
+        }
+    };
 
     const plans = [
         {
@@ -53,7 +89,12 @@ export default function Pricing() {
                                         </li>
                                     ))}
                                 </ul>
-                                <button className={`w-full py-3 rounded-xl font-bold transition-colors ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                                <button
+                                    onClick={() => handleSubscribe(plan.name)}
+                                    disabled={loadingPlan === plan.name}
+                                    className={`w-full py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                >
+                                    {loadingPlan === plan.name && <Loader2 className="animate-spin" size={20} />}
                                     {plan.cta}
                                 </button>
                             </div>

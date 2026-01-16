@@ -224,7 +224,7 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
       {/* Render QRModal with lang prop */}
       <Suspense fallback={null}>
         {qrEmployee && (
-          <QRModal employee={qrEmployee} userId={user.uid} onClose={() => setQrEmployee(null)} t={t} lang={lang} />
+          <QRModal employee={qrEmployee} userId={user.uid} user={user} onClose={() => setQrEmployee(null)} t={t} lang={lang} />
         )}
 
         {/* Render AnalyticsModal with lang prop */}

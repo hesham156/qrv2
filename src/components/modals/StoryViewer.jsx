@@ -1,11 +1,22 @@
-import {X} from "lucide-react";
-import {useEffect, useState} from "react";
+import { X } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { logAnalyticsEvent } from "../../utils/analytics";
 
 export default function StoryViewer({ stories, adminId, employeeId, onClose, products, trackLead, t }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const timerRef = useRef(null);
   const currentStory = stories[currentIndex];
+
+  // Analytics Tracking
+  useEffect(() => {
+    if (currentStory) {
+      logAnalyticsEvent(adminId, employeeId, 'story_view', currentStory.type, {
+        storyId: currentStory.id,
+        productId: currentStory.productId || null
+      });
+    }
+  }, [currentIndex, currentStory, adminId, employeeId]);
 
   useEffect(() => {
     setProgress(0);

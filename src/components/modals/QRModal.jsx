@@ -3,7 +3,7 @@ import { X, Download, ExternalLink, Copy, QrCode } from "lucide-react";
 import { doc, setDoc, increment, serverTimestamp } from "firebase/firestore";
 import { db, appId } from "../../config/firebase";
 
-export default function QRModal({ employee, userId, onClose, t, lang = "ar" }) {
+export default function QRModal({ employee, userId, user, onClose, t, lang = "ar" }) {
   const L = (lang || "ar").toLowerCase() === "en" ? "en" : "ar";
 
   const toText = (v) => {
@@ -24,8 +24,16 @@ export default function QRModal({ employee, userId, onClose, t, lang = "ar" }) {
   const nameText = pick(employee?.name_ar, employee?.name_en, employee?.name);
 
   const baseUrl = useMemo(() => window.location.origin, []);
+
   const getProfileUrl = () => {
+    // 1 custom domain (Pro Only)
+    if (user?.plan === 'pro' && employee?.customDomain) {
+      const domain = employee.customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      return `https://${domain}`;
+    }
+    // 2 slug
     if (employee?.slug) return `${baseUrl}/p/${employee.slug}`;
+    // 3 default
     return `${baseUrl}/profile?uid=${userId}&pid=${employee?.id}`;
   };
 

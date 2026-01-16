@@ -13,6 +13,12 @@ export default function WalletPreviewModal({ type, data, onClose, t }) {
       return;
     }
 
+    // Direct Link Mode (Preferred/Simple)
+    if (data.googleWalletUrl) {
+      window.location.href = data.googleWalletUrl;
+      return;
+    }
+
     setLoading(true);
     setError(null);
 

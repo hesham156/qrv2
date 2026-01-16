@@ -46,8 +46,10 @@ service cloud.firestore {
       match /employees/{empId} {
         // Public Read: Required for visitors to see the card
         allow read: if true;
-        // Write: Only Owner or Admin
-        allow write: if isOwner(userId) || isAdmin(appId);
+        // Write: Only Owner or Admin, OR public update for stats (followers count)
+        allow create, delete: if isOwner(userId) || isAdmin(appId);
+        allow update: if isOwner(userId) || isAdmin(appId) || 
+                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats']));
 
         // 4. Products (Subcollection of Employee)
         match /products/{productId} {
@@ -69,16 +71,31 @@ service cloud.firestore {
           allow read, update, delete: if isOwner(userId) || isAdmin(appId);
         }
 
+        // 5.1 Followers (Email List)
+        match /followers/{followerId} {
+          // Public Create: Visitors can subscribe
+          allow create: if true;
+          // Read/Update/Delete: Only Owner or Admin
+          allow read, update, delete: if isOwner(userId) || isAdmin(appId);
+        }
+
         // 6. Analytics Events
         match /analytics_events/{eventId} {
           // Public Create: Metrics tracking
           allow create: if true;
           // Read/Update/Delete: Only Owner or Admin
-          // Read/Update/Delete: Only Owner or Admin
           allow read, delete: if isOwner(userId) || isAdmin(appId);
           // Allow update if owner OR if only updating stats (public view counter)
           allow update: if isOwner(userId) || isAdmin(appId) || 
                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats']));
+        }
+
+        // 7. Payment Settings (Config for Stripe/Tabby/Tamara)
+        match /payment_settings/{docId} {
+          // Public Read: Needed for "Buy" button to know enabled gateways (Warning: exposed keys)
+          allow read: if true;
+          // Write: Only Owner
+          allow write: if isOwner(userId) || isAdmin(appId);
         }
       }
 

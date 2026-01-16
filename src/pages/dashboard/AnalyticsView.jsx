@@ -47,11 +47,39 @@ export default function AnalyticsView({ employees = [], user }) {
             daysMap[key] = { date: key, views: 0, clicks: 0 };
         }
 
+        // Extended Stats
+        const productStats = {};
+        const storyStats = {};
+        const projectStats = {};
+
         filtered.forEach(e => {
-            const dateKey = e.date; // stored as YYYY-MM-DD
+            // Daily Trends
+            const dateKey = e.date;
             if (daysMap[dateKey]) {
                 if (e.type === 'view') daysMap[dateKey].views++;
                 if (e.type === 'click') daysMap[dateKey].clicks++;
+            }
+
+            // Product Stats
+            if (e.type === 'product_click') {
+                const pid = e.productId || 'unknown';
+                if (!productStats[pid]) productStats[pid] = { name: e.productName || 'Unknown Product', clicks: 0, inquiries: 0 };
+                productStats[pid].clicks++;
+                if (e.subtype === 'inquiry') productStats[pid].inquiries++;
+            }
+
+            // Story Stats
+            if (e.type === 'story_view') {
+                const sid = e.storyId || 'unknown';
+                if (!storyStats[sid]) storyStats[sid] = { type: e.subtype, views: 0 };
+                storyStats[sid].views++;
+            }
+
+            // Project Stats
+            if (e.type === 'portfolio_click') {
+                const pid = e.projectId || 'unknown';
+                if (!projectStats[pid]) projectStats[pid] = { name: e.projectTitle || 'Project', clicks: 0 };
+                projectStats[pid].clicks++;
             }
         });
 
@@ -60,15 +88,21 @@ export default function AnalyticsView({ employees = [], user }) {
             date: d.date.slice(5) // MM-DD
         }));
 
-        // Link Type Data for Pie Chart
+        // Link Type Data for Pie Chart (Original + New Clicks)
         const linkMap = {};
-        filtered.filter(e => e.type === 'click').forEach(e => {
-            const type = e.subtype || 'other';
-            linkMap[type] = (linkMap[type] || 0) + 1;
+        filtered.forEach(e => {
+            if (e.type === 'click' || e.type.includes('_click')) {
+                const type = e.subtype || e.type;
+                linkMap[type] = (linkMap[type] || 0) + 1;
+            }
         });
         const linkData = Object.keys(linkMap).map(key => ({ name: key, value: linkMap[key] }));
 
-        return { views, clicks, ctr, dailyData, linkData };
+        const topProducts = Object.values(productStats).sort((a, b) => b.clicks - a.clicks).slice(0, 5);
+        const topStories = Object.values(storyStats).sort((a, b) => b.views - a.views).slice(0, 5);
+        const topProjects = Object.values(projectStats).sort((a, b) => b.clicks - a.clicks).slice(0, 5);
+
+        return { views, clicks, ctr, dailyData, linkData, topProducts, topStories, topProjects };
     }, [events, selectedEmpId, dateRange]);
 
     useEffect(() => {
@@ -228,6 +262,78 @@ export default function AnalyticsView({ employees = [], user }) {
                                 <p>No clicks recorded yet</p>
                             </div>
                         )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Detailed Performance - New Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                {/* Top Products */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 className="font-bold text-slate-800 mb-4">Top Products</h3>
+                    <div className="space-y-4">
+                        {stats.topProducts.map((p, i) => (
+                            <div key={i} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">#{i + 1}</div>
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-900 line-clamp-1">{p.name}</div>
+                                        <div className="text-xs text-slate-500">{p.inquiries} Inquiries</div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="font-bold text-slate-900">{p.clicks}</div>
+                                    <div className="text-xs text-slate-400">Clicks</div>
+                                </div>
+                            </div>
+                        ))}
+                        {stats.topProducts.length === 0 && <p className="text-center text-slate-400 text-sm py-4">No product clicks yet</p>}
+                    </div>
+                </div>
+
+                {/* Top Stories */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 className="font-bold text-slate-800 mb-4">Top Stories</h3>
+                    <div className="space-y-4">
+                        {stats.topStories.map((s, i) => (
+                            <div key={i} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center font-bold text-sm">#{i + 1}</div>
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-900 capitalize">{s.type} Story</div>
+                                        <div className="text-xs text-slate-500">Viewed</div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="font-bold text-slate-900">{s.views}</div>
+                                    <div className="text-xs text-slate-400">Times</div>
+                                </div>
+                            </div>
+                        ))}
+                        {stats.topStories.length === 0 && <p className="text-center text-slate-400 text-sm py-4">No story views yet</p>}
+                    </div>
+                </div>
+
+                {/* Top Projects */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 className="font-bold text-slate-800 mb-4">Top Projects</h3>
+                    <div className="space-y-4">
+                        {stats.topProjects.map((p, i) => (
+                            <div key={i} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">#{i + 1}</div>
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-900 line-clamp-1">{p.name}</div>
+                                        <div className="text-xs text-slate-500">Project</div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="font-bold text-slate-900">{p.clicks}</div>
+                                    <div className="text-xs text-slate-400">Views</div>
+                                </div>
+                            </div>
+                        ))}
+                        {stats.topProjects.length === 0 && <p className="text-center text-slate-400 text-sm py-4">No project views yet</p>}
                     </div>
                 </div>
             </div>
