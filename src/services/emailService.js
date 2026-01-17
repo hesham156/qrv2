@@ -31,7 +31,7 @@ export const sendBookingNotification = async (bookingData) => {
                 from_phone: bookingData.phone,
                 booking_date: bookingData.date,
                 booking_time: bookingData.time,
-                message: `New booking received for ${bookingData.date} at ${bookingData.time}. From: ${bookingData.name} (${bookingData.phone}).`,
+                message: `New booking received for ${bookingData.date} at ${bookingData.time}. From: ${bookingData.name} (${bookingData.phone}).${bookingData.zoomLink ? `\n\nZoom Meeting: ${bookingData.zoomLink}` : ''}`,
             },
             publicKey
         );

@@ -11,6 +11,23 @@ import {
 } from "lucide-react";
 import { translations } from "../../utils/translations";
 
+const Wrapper = ({ children, isEmbedded }) => {
+  if (isEmbedded) {
+    return (
+      <div className="bg-white rounded-2xl w-full border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-500">
+        {children}
+      </div>
+    )
+  }
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        {children}
+      </div>
+    </div>
+  )
+};
+
 export default function EmployeeForm({ onClose, initialData, userId, user, t, isEmbedded, initialTab }) {
   const [activeTab, setActiveTab] = useState(initialTab || 'general');
   const [formData, setFormData] = useState({
@@ -305,25 +322,10 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
   const currentTitle = getHeaderTitle();
 
   // --- STANDARD MODAL RENDER ---
-  const Wrapper = ({ children }) => {
-    if (isEmbedded) {
-      return (
-        <div className="bg-white rounded-2xl w-full border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-500">
-          {children}
-        </div>
-      )
-    }
-    return (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-          {children}
-        </div>
-      </div>
-    )
-  };
+
 
   return (
-    <Wrapper>
+    <Wrapper isEmbedded={isEmbedded}>
 
       {/* Header - Only for Modal */}
       {/* Header - Always Show */}
@@ -362,7 +364,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
       )}
 
       {/* Form Body - Scrollable */}
-      <div className="overflow-y-auto flex-1 p-6 bg-slate-50/30">
+      <div className="overflow-y-auto flex-1 p-6 bg-slate-50/30 pb-24">
         <form id="empForm" onSubmit={handleSubmit} className="space-y-6">
 
           {/* --- GENERAL TAB --- */}
@@ -968,7 +970,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
       </div>
 
       {/* Footer Actions */}
-      <div className="p-5 border-t border-slate-100 bg-white shrink-0 flex gap-3 z-10">
+      <div className="p-5 border-t border-slate-100 bg-white shrink-0 flex gap-3 z-10 sticky bottom-0 active:bottom-0">
         <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors">{t.cancel}</button>
         <button form="empForm" type="submit" disabled={loading} className="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg transition-all hover:opacity-90 active:scale-[0.98]" style={{ backgroundColor: formData.themeColor }}>
           {loading ? t.saving : t.save}

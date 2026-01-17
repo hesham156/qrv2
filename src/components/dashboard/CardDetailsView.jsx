@@ -77,30 +77,64 @@ export default function CardDetailsView({ employee, onBack, t, lang, onAction })
     ];
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto">
 
+            <div className="flex items-center gap-2 text-sm text-slate-500 mb-6">
+                <button onClick={onBack} className="hover:text-slate-800 transition-colors font-medium">
+                    {t.dashboardTitle || 'Dashboard'}
+                </button>
+                <div className={`w-1 h-1 rounded-full bg-slate-300`} />
+                <span className="text-slate-800 font-bold truncate max-w-[200px]">
+                    {employee?.name_en || employee?.name_ar || 'Card Details'}
+                </span>
+            </div>
 
+            <div className="flex items-start justify-between">
+                <div>
+                    <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">
+                        {t.manageCard || 'Manage Card'}
+                    </h2>
+                    <p className="text-slate-500">
+                        {t.manageCardSub || 'Update your card content, design, and settings.'}
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <a
+                        href={`/p/${employee?.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:shadow-md hover:border-brand-200 hover:text-brand-600 transition-all"
+                    >
+                        <ExternalLink size={16} />
+                        {t.viewLive || "View Live"}
+                    </a>
+                </div>
+            </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {actions.map((action) => {
                     const Icon = action.icon;
                     return (
                         <button
                             key={action.id}
                             onClick={() => onAction(action.id)}
-                            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all text-left group flex items-start gap-4"
+                            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft hover:shadow-soft-lg hover:border-slate-200 hover:-translate-y-1 transition-all text-left group flex flex-col h-full"
                         >
-                            <div className={`w-12 h-12 rounded-xl ${action.bg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
-                                <Icon size={24} className={action.color} />
+                            <div className={`w-14 h-14 rounded-2xl ${action.bg} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
+                                <Icon size={26} className={action.color} strokeWidth={2} />
                             </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
-                                    {action.label}
-                                </h3>
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    {action.desc}
-                                </p>
+
+                            <h3 className="font-bold text-lg text-slate-800 mb-2 group-hover:text-brand-600 transition-colors">
+                                {action.label}
+                            </h3>
+                            <p className="text-sm text-slate-500 leading-relaxed mb-4 flex-1">
+                                {action.desc}
+                            </p>
+
+                            <div className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${action.color} opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300`}>
+                                {t.open || 'Open'}
+                                {isRTL ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
                             </div>
                         </button>
                     )

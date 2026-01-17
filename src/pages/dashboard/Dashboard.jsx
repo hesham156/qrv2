@@ -14,6 +14,8 @@ import AdminView from '../admin/AdminView'; // Heavy
 import AnalyticsView from './AnalyticsView'; // Heavy
 import LeadsView from './LeadsView'; // Heavy
 import ProductsView from './ProductsView';
+import TasksView from './TasksView';
+import TaskDetailsModal from '../../components/dashboard/TaskDetailsModal';
 import OnboardingWizard from '../../components/onboarding/OnboardingWizard';
 import { updateDoc } from 'firebase/firestore';
 
@@ -51,6 +53,7 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
   const [qrEmployee, setQrEmployee] = useState(null)
 
   const [portfolioModal, setPortfolioModal] = useState(null)
+  const [taskModal, setTaskModal] = useState(null)
 
   // New: Selected Card for Dashboard View
   const [selectedCardId, setSelectedCardId] = useState(null)
@@ -250,9 +253,9 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
         currentView === 'cards' && (
           <button
             onClick={handleAddNew}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold transition-all text-sm shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all text-sm shadow-lg shadow-brand-200 hover:shadow-brand-300 hover:-translate-y-0.5"
           >
-            <Plus size={18} strokeWidth={2.5} />
+            <Plus size={20} strokeWidth={3} />
             <span className="hidden sm:inline">{t.addNew || "Add New"}</span>
           </button>
         )
@@ -275,14 +278,20 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
           )}
 
           {employees.length === 0 && !permissionError ? (
-            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-              <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <UserPlus size={32} />
+            <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-300 shadow-soft">
+              <div className="w-20 h-20 bg-brand-50 text-brand-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-glow animate-float">
+                <UserPlus size={40} strokeWidth={1.5} />
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">{t.noCards}</h3>
-              <p className="text-slate-500 mb-6">{t.noCardsSub}</p>
-              <button onClick={handleAddNew} className="text-blue-600 font-bold hover:underline">
-                {t.addFirst}
+              <h3 className="text-2xl font-black text-slate-800 mb-3 tracking-tight">{t.noCards || "No Digital Cards Found"}</h3>
+              <p className="text-slate-500 mb-8 max-w-sm mx-auto leading-relaxed">
+                {t.noCardsSub || "Get started by creating your first professional digital business card."}
+              </p>
+              <button
+                onClick={handleAddNew}
+                className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
+              >
+                <Plus size={20} />
+                {t.addFirst || "Create Card"}
               </button>
             </div>
           ) : (
@@ -290,9 +299,9 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
               variants={containerVariants}
               initial="hidden"
               animate="show"
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 pb-20"
             >
-              {employees.map((employee, index) => {
+              {employees.filter(emp => !emp.hidden).map((employee, index) => {
                 const isLocked = isItemLocked(index, user);
                 return (
                   <motion.div variants={itemVariants} key={employee.id} className="relative">
@@ -367,7 +376,7 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
       )}
 
       {currentView === 'leads' && (
-        <LeadsView employees={employees} user={user} />
+        <LeadsView employees={employees} user={user} t={t} />
       )}
 
       {currentView === 'products' && (
@@ -376,6 +385,15 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
           employees={employees}
           onManageProducts={(emp) => setSearchParams({ modal: 'products', cardId: emp.id })}
           t={t}
+        />
+      )}
+
+      {currentView === 'tasks' && (
+        <TasksView
+          employees={employees}
+          user={user}
+          t={t}
+          openTaskModal={setTaskModal}
         />
       )}
 
@@ -441,6 +459,15 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
             t={t}
             user={user}
             onUpgrade={() => setShowUpgradeModal(true)}
+          />
+        )}
+
+        {taskModal && (
+          <TaskDetailsModal
+            employee={taskModal}
+            userId={user.uid}
+            onClose={() => setTaskModal(null)}
+            t={t}
           />
         )}
 

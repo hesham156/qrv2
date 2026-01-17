@@ -17,7 +17,7 @@ export default function DashboardLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className={`min-h-screen bg-slate-50 flex ${lang === 'ar' ? 'flex-row-reverse' : 'flex-row'}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className={`min-h-screen bg-slate-50/50 flex flex-row`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
             {/* Sidebar */}
             <Sidebar
                 currentView={currentView}
@@ -32,24 +32,31 @@ export default function DashboardLayout({
             />
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col h-screen overflow-hidden">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
 
                 {/* Top Header */}
-                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 z-10 relative">
-                    <div className="flex items-center gap-3">
+                <header className="h-20 bg-slate-50/50 backdrop-blur-md flex items-center justify-between px-6 lg:px-10 shrink-0 z-10 relative border-b border-transparent sticky top-0">
+                    <div className="flex items-center gap-4">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
-                            className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                            className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-white hover:shadow-soft rounded-lg transition-all"
                         >
                             <Menu size={24} />
                         </button>
-                        <h1 className="text-xl font-bold text-slate-800">
-                            {/* Dynamic Title based on View */}
-                            {currentView === 'cards' && (t.dashboardTitle || 'My Cards')}
-                            {currentView === 'analytics' && (t.stats || 'Analytics')}
-                            {currentView === 'leads' && (t.leads || 'Leads')}
-                            {currentView === 'products' && (t.productsTitle || 'Products')}
-                        </h1>
+
+                        <div>
+                            <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+                                {/* Dynamic Title based on View */}
+                                {currentView === 'cards' && (t.dashboardTitle || 'My Cards')}
+                                {currentView === 'analytics' && (t.stats || 'Analytics')}
+                                {currentView === 'leads' && (t.leads || 'Leads')}
+                                {currentView === 'products' && (t.productsTitle || 'Products')}
+                            </h1>
+                            <p className="text-sm text-slate-500 font-medium hidden sm:block">
+                                {t.welcomeBack || 'Welcome back,'} {user?.email?.split('@')[0]}
+                            </p>
+                        </div>
+
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -58,7 +65,7 @@ export default function DashboardLayout({
 
                         <button
                             onClick={toggleLang}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg transition-colors font-bold text-xs uppercase"
+                            className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl transition-all font-bold text-xs uppercase shadow-sm hover:shadow-md"
                         >
                             {lang === "ar" ? "EN" : "AR"}
                         </button>

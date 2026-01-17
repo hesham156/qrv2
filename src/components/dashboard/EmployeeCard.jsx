@@ -1,20 +1,16 @@
 import React from 'react';
 import {
-  Edit2,
+  Edit3,
   Trash2,
   Building2,
   User,
   Activity,
-  MousePointerClick,
-  BarChart3,
-  Users,
-  QrCode,
+  MousePointer2,
   Eye,
-  ShoppingBag,
-  CircleDashed,
-  Briefcase,
   Settings,
-  MoreHorizontal
+  MoreVertical,
+  QrCode,
+  Share2
 } from 'lucide-react';
 
 export default function EmployeeCard({
@@ -28,14 +24,12 @@ export default function EmployeeCard({
   onManageProducts,
   onManageStories,
   onManagePortfolio,
-  onManage, // New Prop
+  onManage,
   t,
   lang
 }) {
-  // Normalize lang to "ar" | "en"
   const L = (lang || 'ar').toLowerCase() === 'en' ? 'en' : 'ar';
 
-  // Always return STRING (never object)
   const toText = (v) => {
     if (v == null) return '';
     if (typeof v === 'string' || typeof v === 'number') return String(v);
@@ -52,21 +46,11 @@ export default function EmployeeCard({
   };
 
   const isCompany = employee?.profileType === 'company';
-  const themeColor = employee?.themeColor || '#2563eb';
+  const themeColor = employee?.themeColor || '#0284c7'; // Default to brand-600
   const views = employee?.stats?.views || 0;
 
   const nameText = pick(employee?.name_ar, employee?.name_en, employee?.name);
   const jobTitleText = pick(employee?.jobTitle_ar, employee?.jobTitle_en, employee?.jobTitle);
-
-  const templateName =
-    {
-      classic: t.classic,
-      modern: t.modern,
-      creative: t.creative,
-      elegant: t.elegant,
-      professional: t.professional,
-      minimal: t.minimal
-    }[employee?.template] || t.classic;
 
   const totalClicks = Object.values(employee?.stats?.clicks || {}).reduce(
     (a, b) => a + (Number(b) || 0),
@@ -74,118 +58,133 @@ export default function EmployeeCard({
   );
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow p-5 relative group">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          {employee?.photoUrl ? (
-            <img
-              src={employee.photoUrl}
-              alt={nameText || (isCompany ? t.profileTypeComp : t.profileTypeEmp)}
-              className={`w-12 h-12 object-cover border border-slate-200 ${isCompany ? 'rounded-lg' : 'rounded-full'
-                }`}
-              style={{ borderColor: themeColor }}
-            />
-          ) : (
-            <div
-              className={`w-12 h-12 flex items-center justify-center text-xl font-bold text-white ${isCompany ? 'rounded-lg' : 'rounded-full'
-                }`}
-              style={{ backgroundColor: themeColor }}
-            >
-              {isCompany ? <Building2 size={20} /> : (nameText ? String(nameText).charAt(0) : '?')}
+    <div className="bg-white rounded-3xl shadow-soft hover:shadow-soft-lg hover:-translate-y-1 transition-all duration-300 border border-slate-100 flex flex-col group h-full">
+      {/* Top Banner / Color Strip (Optional, good for differentiation) */}
+      <div
+        className="h-2 w-full rounded-t-3xl opacity-80"
+        style={{ backgroundColor: themeColor }}
+      />
+
+      <div className="p-6 flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              {employee?.photoUrl ? (
+                <img
+                  src={employee.photoUrl}
+                  alt={nameText}
+                  className={`w-14 h-14 object-cover shadow-sm ${isCompany ? 'rounded-xl' : 'rounded-full'}`}
+                  style={{ border: `2px solid ${themeColor}20` }}
+                />
+              ) : (
+                <div
+                  className={`w-14 h-14 flex items-center justify-center text-xl font-bold text-white shadow-sm ${isCompany ? 'rounded-xl' : 'rounded-full'}`}
+                  style={{ backgroundColor: themeColor }}
+                >
+                  {isCompany ? <Building2 size={24} /> : (nameText ? String(nameText).charAt(0) : '?')}
+                </div>
+              )}
+              <div className={`absolute -bottom-1 -right-1 w-6 h-6 flex items-center justify-center rounded-full border-2 border-white text-white text-[10px] ${isCompany ? 'bg-indigo-500' : 'bg-green-500'}`}>
+                {isCompany ? <Building2 size={12} /> : <User size={12} />}
+              </div>
             </div>
-          )}
 
-          <div>
-            <h3 className="font-bold text-slate-800 line-clamp-1">
-              {nameText || (isCompany ? t.profileTypeComp : t.profileTypeEmp)}
-            </h3>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-slate-800 text-lg leading-tight truncate mb-1">
+                {nameText || (isCompany ? t.profileTypeComp : t.profileTypeEmp)}
+              </h3>
+              <p className="text-sm text-slate-500 truncate font-medium">
+                {isCompany ? (jobTitleText || t.company) : (jobTitleText || t.employee)}
+              </p>
+            </div>
+          </div>
 
-            <p className="text-sm text-slate-500 line-clamp-1">
-              {isCompany ? (jobTitleText || t.company) : (jobTitleText || t.employee)}
-            </p>
 
-            {!!employee?.slug && (
-              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded mt-1 inline-block font-mono">
-                /{String(employee.slug)}
-              </span>
-            )}
+          <div className="relative flex gap-1">
+            <button
+              onClick={onEdit}
+              className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-full transition-colors"
+              title={t.edit}
+            >
+              <Edit3 size={18} />
+            </button>
+            <button
+              onClick={onDelete}
+              className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+              title={t.delete}
+            >
+              <Trash2 size={18} />
+            </button>
           </div>
         </div>
 
-        <div className="flex gap-1">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="bg-slate-50 rounded-2xl p-3 flex flex-col items-center justify-center border border-slate-100 group-hover:border-slate-200 transition-colors">
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+              <Activity size={12} />
+              <span>{t.views}</span>
+            </div>
+            <span className="text-xl font-black text-slate-800">{views}</span>
+          </div>
+          <div className="bg-slate-50 rounded-2xl p-3 flex flex-col items-center justify-center border border-slate-100 group-hover:border-slate-200 transition-colors">
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
+              <MousePointer2 size={12} />
+              <span>{t.clicks}</span>
+            </div>
+            <span className="text-xl font-black text-slate-800">{totalClicks}</span>
+          </div>
+        </div>
+
+        {/* Slug / Link (Bottom) */}
+        {/* Slug / Link (Bottom) */}
+        {employee?.slug && (
           <button
-            onClick={onEdit}
-            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              const url = `${window.location.origin}/${employee.slug}`;
+              if (navigator.share) {
+                navigator.share({
+                  title: nameText,
+                  text: jobTitleText,
+                  url: url
+                }).catch(console.error);
+              } else {
+                navigator.clipboard.writeText(url);
+                // Simple visual feedback could be nice, but keeping it standard for now
+                alert(t.linkCopied || "Link copied!");
+              }
+            }}
+            className="mb-6 flex items-center justify-between text-xs font-medium text-slate-500 bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-lg cursor-pointer w-full transition-colors group/share"
+            title={t.share || "Share Link"}
           >
-            <Edit2 size={16} />
+            <span className="truncate flex-1 font-mono text-slate-600 text-left">/{employee.slug}</span>
+            <Share2 size={14} className="text-slate-400 group-hover/share:text-brand-600 transition-colors" />
+          </button>
+        )}
+
+        {/* Action Buttons - Pushed to bottom */}
+        <div className="mt-auto grid grid-cols-[1fr,auto] gap-2">
+          <button
+            onClick={() => {
+              if (onManage) onManage();
+              else window.location.href = `/dashboard/card/${employee.id}`;
+            }}
+            className="bg-slate-900 hover:bg-slate-800 text-white py-3 px-4 rounded-xl text-sm font-bold shadow-lg shadow-slate-200 hover:shadow-xl transition-all flex items-center justify-center gap-2 group/btn"
+          >
+            <Settings size={18} className="group-hover/btn:rotate-90 transition-transform duration-500" />
+            {t.manageCard || "Manage Card"}
           </button>
           <button
-            onClick={onDelete}
-            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            onClick={onPreview}
+            className="bg-white border border-slate-200 text-slate-600 w-12 flex items-center justify-center rounded-xl hover:bg-slate-50 hover:border-slate-300 hover:text-brand-600 transition-all shadow-sm"
+            title={t.preview}
           >
-            <Trash2 size={16} />
+            <Eye size={20} />
           </button>
         </div>
       </div>
-
-      <div className="flex items-center flex-wrap gap-2 mb-4">
-        <span
-          className={`text-xs px-2 py-1 rounded font-medium flex items-center gap-1 ${isCompany ? 'bg-indigo-50 text-indigo-600' : 'bg-green-50 text-green-600'
-            }`}
-        >
-          {isCompany ? <Building2 size={12} /> : <User size={12} />}
-          {isCompany ? t.profileTypeComp : t.profileTypeEmp}
-        </span>
-
-        <span className="text-xs px-2 py-1 bg-slate-100 rounded text-slate-500 font-medium">
-          {String(templateName)}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-4 mb-4 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
-        <div className="flex items-center gap-1">
-          <Activity size={14} className="text-blue-500" />
-          <span>
-            {views} {t.views}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <MousePointerClick size={14} className="text-orange-500" />
-          <span>
-            {totalClicks} {t.clicks}
-          </span>
-        </div>
-      </div>
-
-      {/* ✅ صف أزرار الإدارة: منتجات + قصص */}
-      {/* Optimized Actions Row */}
-      <div className="flex items-center gap-2 mt-2">
-        <button
-          onClick={() => {
-            // Navigate to dedicated route
-            window.location.href = `/dashboard/card/${employee.id}`;
-            // Or better, use a callback if we are inside Router context, 
-            // but here we are likely deeper. 
-            // Ideally we should use useNavigate, but this component doesn't have it imported.
-            // We'll rely on the parent handler or simpler:
-            // Actually, parent passes 'onManage'. Let's update parent handler in Dashboard.jsx.
-            if (onManage) onManage();
-          }}
-          className="flex-1 bg-slate-900 text-white py-2.5 rounded-xl text-sm font-bold shadow hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-        >
-          <Settings size={16} />
-          {t.manageCard || "Manage Card"}
-        </button>
-
-        <button
-          onClick={onPreview}
-          className="bg-slate-100 text-slate-600 p-2.5 rounded-xl hover:bg-slate-200 transition-colors"
-          title={t.preview}
-        >
-          <Eye size={20} />
-        </button>
-      </div>
-    </div >
+    </div>
   );
 }
