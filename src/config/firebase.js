@@ -2,14 +2,19 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+// Diagnostic check for environment variables
+if (!process.env.REACT_APP_FIREBASE_API_KEY) {
+  console.error("❌ Firebase API Key is missing! If you just added it to .env, please RESTART your development server (npm start).");
+}
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCWqSVKT-ezEuGZFxI0fztNEXqaBnixu50",
-  authDomain: "wafarle-f16a0.firebaseapp.com",
-  projectId: "wafarle-f16a0",
-  storageBucket: "wafarle-f16a0.firebasestorage.app",
-  messagingSenderId: "473633074583",
-  appId: "1:473633074583:web:79d443fb4f2d188fe2a8d2",
-  measurementId: "G-7WHS1K7TCQ"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);

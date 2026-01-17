@@ -7,6 +7,8 @@ import { Link } from 'react-router-dom';
 import AuthLayout from '../../layouts/AuthLayout';
 import { Button } from '../../components/ui/Button';
 import { useSEO } from '../../hooks/useSEO';
+import { sendEmailVerification } from 'firebase/auth';
+
 
 // Plan Configuration
 const plans = [
@@ -24,6 +26,7 @@ export default function RegisterView({ t }) {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [verificationSent, setVerificationSent] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -31,18 +34,24 @@ export default function RegisterView({ t }) {
         setError('');
 
         try {
+            // 1. Create Account
             const userCred = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCred.user;
 
-            // Save User Profile & Plan
+            // 2. Send Verification Email
+            await sendEmailVerification(user);
+
+            // 3. Save User Profile & Plan
             await setDoc(doc(db, 'artifacts', appId, 'users', user.uid), {
                 email: user.email,
                 plan: selectedPlan,
                 createdAt: serverTimestamp(),
-                subscriptionStatus: 'active' // For Free plan, it's active by default
+                subscriptionStatus: 'active'
             });
 
-            // Navigation is handled by App.js ProtectedRoute logic automatically
+            setVerificationSent(true);
+            setLoading(false);
+
         } catch (err) {
             console.error(err);
             setError('Registration failed: ' + err.message);
@@ -136,6 +145,24 @@ export default function RegisterView({ t }) {
         </form>
     );
 
+    const renderSuccessMessage = () => (
+        <div className="text-center py-8">
+            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Account Created!</h3>
+            <p className="text-slate-600 mb-6">
+                We've sent a verification link to <b>{email}</b>.<br />
+                Please check your inbox and click the link to activate your account.
+            </p>
+            <Link to="/login">
+                <Button size="lg" className="w-full">
+                    Go to Login
+                </Button>
+            </Link>
+        </div>
+    );
+
     return (
         <AuthLayout
             title={step === 1 ? "Choose a plan" : "Create Account"}
@@ -148,7 +175,7 @@ export default function RegisterView({ t }) {
                 </div>
             )}
 
-            {step === 1 ? renderPlanSelection() : renderAccountForm()}
+            {verificationSent ? renderSuccessMessage() : (step === 1 ? renderPlanSelection() : renderAccountForm())}
 
             <div className="mt-8 pt-8 border-t border-slate-100 text-center text-xs text-slate-400">
                 By creating an account, you agree to our <button type="button" onClick={() => alert("Terms Coming Soon")} className="underline hover:text-slate-600">Terms</button> and <button type="button" onClick={() => alert("Privacy Policy Coming Soon")} className="underline hover:text-slate-600">Privacy Policy</button>.

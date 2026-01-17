@@ -5,11 +5,16 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db, appId } from './config/firebase';
 import { translations } from './utils/translations';
 import ProfileSkeleton from './components/skeletons/ProfileSkeleton';
+import PageTransition from './components/ui/PageTransition';
+import BrandedLoader from './components/ui/BrandedLoader';
+import { AnimatePresence } from 'framer-motion';
 
 // Lazy Load Pages
 const LoginView = lazy(() => import('./pages/auth/LoginView'));
 const RegisterView = lazy(() => import('./pages/auth/RegisterView'));
+const VerifyEmailView = lazy(() => import('./pages/auth/VerifyEmailView'));
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
+const SingleCardDashboard = lazy(() => import('./pages/dashboard/SingleCardDashboard'));
 const ProfileView = lazy(() => import('./pages/profile/ProfileView'));
 const Home = lazy(() => import('./pages/landing/Home'));
 const Pricing = lazy(() => import('./pages/landing/Pricing'));
@@ -21,11 +26,7 @@ const NotFound = lazy(() => import('./pages/utility/NotFound'));
 
 
 // Component to show while lazy components load
-const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-50">
-    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-  </div>
-);
+const PageLoader = () => <BrandedLoader />;
 
 
 // --- Helper Component for PWA & Global Logic ---
@@ -58,12 +59,13 @@ function AppLogic({ children }) {
     checkLegacyRoute();
   }, [location]);
 
-  return children(deferredPrompt);
+  return children(deferredPrompt, location);
 }
 
 // --- Protected Route Wrapper ---
 const ProtectedRoute = ({ user, children }) => {
   if (!user) return <Navigate to="/login" replace />;
+  if (!user.emailVerified) return <Navigate to="/verify-email" replace />;
   return children;
 };
 
@@ -127,7 +129,9 @@ function ProfileRoute({ user, lang, toggleLang, t }) {
 
   return (
     <Suspense fallback={<ProfileSkeleton />}>
-      <ProfileView data={profileData} user={user} lang={lang} toggleLang={toggleLang} t={t} />
+      <PageTransition>
+        <ProfileView data={profileData} user={user} lang={lang} toggleLang={toggleLang} t={t} />
+      </PageTransition>
     </Suspense>
   );
 }
@@ -221,19 +225,21 @@ export default function App() {
     };
   }, []);
 
-  if (authLoading || domainCheckLoading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (authLoading || domainCheckLoading) return <BrandedLoader />;
 
   // --- CUSTOM DOMAIN RENDER ---
   if (customDomainData) {
     return (
       <Suspense fallback={<PageLoader />}>
-        <ProfileView
-          data={{ id: customDomainData.targetEmpId, adminId: customDomainData.targetUid }}
-          user={user}
-          lang={lang}
-          toggleLang={toggleLang}
-          t={t}
-        />
+        <PageTransition>
+          <ProfileView
+            data={{ id: customDomainData.targetEmpId, adminId: customDomainData.targetUid }}
+            user={user}
+            lang={lang}
+            toggleLang={toggleLang}
+            t={t}
+          />
+        </PageTransition>
       </Suspense>
     );
   }
@@ -241,54 +247,76 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppLogic>
-        {(installPrompt) => (
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Marketing Pages */}
-              <Route path="/" element={<Home />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/features" element={<Features />} />
-              <Route path="/contact" element={<Contact />} />
+        {(installPrompt, location) => {
+          return (
+            <Suspense fallback={<PageLoader />}>
+              <AnimatePresence mode="wait">
+                <Routes location={location} key={location.pathname}>
+                  {/* Marketing Pages */}
+                  <Route path="/" element={<PageTransition><Home /></PageTransition>} />
+                  <Route path="/pricing" element={<PageTransition><Pricing /></PageTransition>} />
+                  <Route path="/features" element={<PageTransition><Features /></PageTransition>} />
+                  <Route path="/contact" element={<PageTransition><Contact /></PageTransition>} />
 
-              {/* Auth */}
-              <Route path="/login" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <LoginView lang={lang} toggleLang={toggleLang} t={t} />} />
-              <Route path="/register" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <RegisterView lang={lang} toggleLang={toggleLang} t={t} />} />
+                  {/* Auth */}
+                  <Route path="/login" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <PageTransition><LoginView lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
+                  <Route path="/register" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <PageTransition><RegisterView lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
+                  <Route path="/verify-email" element={user ? (user.emailVerified ? <Navigate to="/dashboard" /> : <PageTransition><VerifyEmailView /></PageTransition>) : <Navigate to="/login" />} />
 
-              {/* App */}
-              <Route path="/payment/success" element={<ProtectedRoute user={user}><PaymentSuccess /></ProtectedRoute>} />
-              <Route path="/payment/cancel" element={<Navigate to="/pricing" />} />
+                  {/* App */}
+                  <Route path="/payment/success" element={<ProtectedRoute user={user}><PageTransition><PaymentSuccess /></PageTransition></ProtectedRoute>} />
+                  <Route path="/payment/cancel" element={<Navigate to="/pricing" />} />
 
-              <Route path="/dashboard" element={
-                <ProtectedRoute user={user}>
-                  <Dashboard
-                    user={user}
-                    onLogout={() => auth.signOut()}
-                    lang={lang}
-                    toggleLang={toggleLang}
-                    t={t}
-                    installPrompt={installPrompt}
-                    onInstall={() => {
-                      if (installPrompt) {
-                        installPrompt.prompt();
-                        installPrompt.userChoice.then(res => {
-                          // if (res.outcome === 'accepted') console.log('Accepted');
-                        });
-                      }
-                    }}
-                  />
-                </ProtectedRoute>
-              } />
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute user={user}>
+                      <PageTransition>
+                        <Dashboard
+                          user={user}
+                          onLogout={() => auth.signOut()}
+                          lang={lang}
+                          toggleLang={toggleLang}
+                          t={t}
+                          installPrompt={installPrompt}
+                          onInstall={() => {
+                            if (installPrompt) {
+                              installPrompt.prompt();
+                              installPrompt.userChoice.then(res => {
+                                // if (res.outcome === 'accepted') console.log('Accepted');
+                              });
+                            }
+                          }}
+                        />
+                      </PageTransition>
 
-              {/* Profile Routes */}
-              <Route path="/p/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
-              <Route path="/profile" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/dashboard/card/:cardId/*" element={
+                    <ProtectedRoute user={user}>
+                      <SingleCardDashboard
+                        user={user}
+                        t={t}
+                        lang={lang}
+                        onLogout={() => auth.signOut()}
+                        toggleLang={toggleLang}
+                      />
+                    </ProtectedRoute>
+                  } />
+
+                  {/* Profile Routes */}
+                  <Route path="/p/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
+                  <Route path="/profile" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
+                  {/* Root Slug Catch-all - Must be last before * */}
+                  <Route path="/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
 
 
-              {/* Fallback for legacy hash routes or 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        )}
+                  {/* Fallback for legacy hash routes or 404 */}
+                  <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+                </Routes>
+              </AnimatePresence>
+            </Suspense>
+          );
+        }}
       </AppLogic>
     </BrowserRouter>
   );

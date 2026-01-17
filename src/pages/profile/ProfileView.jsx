@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { doc, getDoc, collection, setDoc, increment, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
+import ProfileChatbot from '../../components/profile/ProfileChatbot';
 import { logAnalyticsEvent } from '../../utils/analytics';
 import {
   Phone,
@@ -25,17 +27,20 @@ import {
   Briefcase,
   X,
   Heart,
-  Star
+  Star,
+  Calendar
 } from 'lucide-react';
 
 import { isPlanActive } from '../../utils/planHelpers';
 import ProfileSkeleton from '../../components/skeletons/ProfileSkeleton';
+import { useSEO } from '../../hooks/useSEO';
 
 // Lazy Load Modals
 const LeadCaptureModal = lazy(() => import('../../components/modals/LeadCaptureModal'));
 
 const WalletPreviewModal = lazy(() => import('../../components/modals/WalletPreviewModal'));
 const FollowModal = lazy(() => import('../../components/modals/FollowModal'));
+const BookingModal = lazy(() => import('../../components/modals/BookingModal'));
 
 
 
@@ -56,6 +61,7 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
 
   const [isFollowing, setIsFollowing] = useState(false);
   const [followModalOpen, setFollowModalOpen] = useState(false); // ✅
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [rateModalOpen, setRateModalOpen] = useState(false); // ✅
   const isLogged = useRef(false);
   const productsLoaded = useRef(false);
@@ -63,6 +69,21 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
 
   // ---------- Helpers (Multilingual + Safe Text) ----------
   const L = (lang || 'ar').toLowerCase() === 'en' ? 'en' : 'ar';
+
+  const containerVariants = useMemo(() => ({
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }), []);
+
+  const itemVariants = useMemo(() => ({
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  }), []);
 
   // ... (rest of the file content)
 
@@ -98,6 +119,13 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
   const jobTitleText = pick(data?.jobTitle_ar, data?.jobTitle_en, data?.jobTitle);
   const companyText = toText(data?.company);
   const isCompany = data?.profileType === 'company';
+
+  // Custom SEO Hook
+  useSEO(
+    data?.seoTitle || nameText,
+    data?.seoDescription || data?.bio_ar || data?.bio_en || jobTitleText,
+    data?.seoImage || data?.photoUrl
+  );
 
   const totalViews = data?.stats?.views || 0;
   const totalScans = data?.stats?.scans || 0;
@@ -172,64 +200,55 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
           }
         }
 
-        if (!cancelled) setData({ ...emp, isLocked });
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setData({ ...emp, isLocked });
+          setLoading(false);
+
+          // ✅ analytics في الخلفية (مرة واحدة فقط)
+          if (!isLogged.current) {
+            isLogged.current = true;
+            const hash = window.location.hash || '';
+            const fromQR = hash.includes('src=qr');
+
+            (async () => {
+              try {
+                // Fetch basic geo for stats (faster and doesn't block UI)
+                const res = await fetch('https://ipwho.is/');
+                const geo = await res.json();
+                const countryCode = geo?.success ? geo.country_code : 'Unknown';
+                const lat = geo?.success ? geo.latitude : 0;
+                const lng = geo?.success ? geo.longitude : 0;
+                const locationKey = `${Math.round(lat * 10) / 10}_${Math.round(lng * 10) / 10}`;
+
+                logAnalyticsEvent(
+                  profileData.adminId,
+                  profileData.id,
+                  'view',
+                  fromQR ? 'qr_scan' : 'link',
+                  { country: countryCode }
+                );
+
+                const statsUpdate = {
+                  views: increment(1),
+                  countries: { [countryCode]: increment(1) },
+                  heatmap: { [locationKey]: increment(1) },
+                  ...(fromQR ? { scans: increment(1) } : {})
+                };
+
+                await setDoc(empRef, { stats: statsUpdate }, { merge: true });
+              } catch (e) {
+                console.warn('Analytics error:', e);
+                // Fallback: increment views at least
+                setDoc(empRef, { stats: { views: increment(1) } }, { merge: true }).catch(() => { });
+              }
+            })();
+          }
+        }
 
         // Check local follow status
         const followed = localStorage.getItem(`followed_${profileData.id}`);
         if (followed) setIsFollowing(true);
 
-        // ✅ analytics في الخلفية (بدون ما يوقف الواجهة)
-        if (!isLogged.current) {
-          isLogged.current = true;
-
-          setTimeout(async () => {
-            const hash = window.location.hash || '';
-            const fromQR = hash.includes('src=qr');
-
-            try {
-              // ✅ timeout سريع للـ ipwho عشان مايتعلقش
-              const controller = new AbortController();
-              const timer = setTimeout(() => controller.abort(), 1200);
-
-              const res = await fetch('https://ipwho.is/', { signal: controller.signal });
-              clearTimeout(timer);
-
-              const geo = await res.json();
-              const countryCode = geo?.success ? geo.country_code : 'Unknown';
-              const lat = geo?.success ? geo.latitude : 0;
-              const lng = geo?.success ? geo.longitude : 0;
-              const locationKey = `${Math.round(lat * 10) / 10}_${Math.round(lng * 10) / 10}`;
-
-              // Log Detailed Event
-              logAnalyticsEvent(
-                profileData.adminId,
-                profileData.id,
-                'view',
-                fromQR ? 'qr_scan' : 'link',
-                { country: countryCode }
-              );
-
-              const statsUpdate = {
-                views: increment(1),
-                countries: { [countryCode]: increment(1) },
-                heatmap: { [locationKey]: increment(1) },
-                ...(fromQR ? { scans: increment(1) } : {})
-              };
-
-              await setDoc(empRef, { stats: statsUpdate }, { merge: true });
-            } catch (e) {
-              // fallback سريع
-              try {
-                await setDoc(
-                  empRef,
-                  { stats: { views: increment(1), ...(fromQR ? { scans: increment(1) } : {}) } },
-                  { merge: true }
-                );
-              } catch (_) { }
-            }
-          }, 0);
-        }
       } catch (err) {
         if (!cancelled) {
           console.error("Error in fetchEmployee:", err);
@@ -252,9 +271,7 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
     fetchEmployee();
     fetchPaymentConfig();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [profileData?.adminId, profileData?.id]);
 
   // ---------- Tracking Scripts Injection ----------
@@ -440,7 +457,6 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
   // ---------- Lazy Load Products (only when tab is products) ----------
   useEffect(() => {
     if (!profileData?.adminId || !profileData?.id) return;
-    if (activeTab !== 'products') return;
     if (productsLoaded.current) return;
 
     let cancelled = false;
@@ -481,12 +497,11 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
     return () => {
       cancelled = true;
     };
-  }, [activeTab, profileData?.adminId, profileData?.id]);
+  }, [profileData?.adminId, profileData?.id]);
 
   // ---------- Lazy Load Portfolio (only when tab is portfolio) ----------
   useEffect(() => {
     if (!profileData?.adminId || !profileData?.id) return;
-    if (activeTab !== 'portfolio') return;
     if (portfolioLoaded.current) return;
 
     let cancelled = false;
@@ -525,7 +540,17 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
     return () => {
       cancelled = true;
     };
-  }, [activeTab, profileData?.adminId, profileData?.id]);
+  }, [profileData?.adminId, profileData?.id]);
+
+  // Fallback if active tab becomes empty or hidden
+  useEffect(() => {
+    if (activeTab === 'products' && productsLoaded.current && products.length === 0) {
+      setActiveTab('info');
+    }
+    if (activeTab === 'portfolio' && portfolioLoaded.current && portfolio.length === 0) {
+      setActiveTab('info');
+    }
+  }, [activeTab, products, portfolio]);
 
   const trackClick = useCallback(async (action) => {
     // Log Detailed Event
@@ -688,13 +713,16 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
     isActive ? "text-white shadow-md" : "text-white/70 hover:text-white hover:bg-white/10";
 
   const StatPill = ({ icon, label, value }) => (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/10 border border-white/10">
+    <motion.div
+      whileHover={{ y: -2 }}
+      className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/10 border border-white/10"
+    >
       <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">{icon}</div>
       <div className="leading-tight">
         <div className="text-[10px] text-white/70 font-bold">{label}</div>
         <div className="text-sm text-white font-extrabold">{value}</div>
       </div>
-    </div>
+    </motion.div>
   );
 
   const HeaderView = useMemo(() => (
@@ -747,7 +775,12 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
   ), [headerStyle, data?.bgVideoUrl, t, toggleLang, L, totalViews, totalScans, template, themeColor, toText, data?.stats]);
 
   const AvatarView = useMemo(() => (
-    <div className={`absolute right-1/2 translate-x-1/2 ${template === 'modern_pro' ? '-top-20 w-32 h-32 rounded-[2rem] border-8' : '-top-10 w-24 h-24 rounded-3xl border-4'} border-white/10 shadow-2xl bg-white overflow-hidden flex items-center justify-center transition-all duration-500`}>
+    <motion.div
+      initial={{ scale: 0.5, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', damping: 15, stiffness: 100 }}
+      className={`absolute right-1/2 translate-x-1/2 ${template === 'modern_pro' ? '-top-20 w-32 h-32 rounded-[2rem] border-8' : '-top-10 w-24 h-24 rounded-3xl border-4'} border-white/10 shadow-2xl bg-white overflow-hidden flex items-center justify-center transition-all duration-500`}
+    >
       {/* Modern Pro: Glass border effect manually added via styles if needed, but border-white/10 works well with dark bg */}
       <div className="w-full h-full bg-white relative overflow-hidden">
         {data?.profileVideoUrl ? (
@@ -768,18 +801,20 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   ), [data?.profileVideoUrl, data?.photoUrl, nameText, template, toText]);
 
   const ActionButton = ({ icon, label, onClick, href, className = "", targetBlank = false }) => {
     const content = (
-      <div
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         className={`w-full ${btnBase} ${template === 'modern_pro' ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50'} border px-4 py-3 ${className}`}
         style={{ boxShadow: template === 'elegant' ? palette.glow : undefined }}
       >
         <span className="text-slate-700">{icon}</span>
         <span className="text-sm">{label}</span>
-      </div>
+      </motion.div>
     );
 
     if (href) {
@@ -804,29 +839,36 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
   };
 
   const PrimaryButton = ({ icon, label, onClick }) => (
-    <button
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={`w-full ${btnBase} px-4 py-4 text-white text-sm shadow-xl`}
       style={{ backgroundColor: themeColor, boxShadow: palette.glow }}
     >
       {icon}
       {label}
-    </button>
+    </motion.button>
   );
 
   // --- Tabs Content ---
   const InfoTabView = useMemo(() => (
-    <div className={`pt-16 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 ${template === 'modern_pro' ? 'text-white' : ''}`}>
-      <div className="text-center mt-2 mb-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className={`pt-10 pb-8 ${template === 'modern_pro' ? 'text-white' : ''}`}
+    >
+      <motion.div variants={itemVariants} className="text-center mt-2 mb-6">
         <h1 className={`text-3xl font-black tracking-tighter mb-2 ${template === 'modern_pro' ? 'text-white drop-shadow-lg' : 'text-slate-900'}`}>{nameText}</h1>
         <p className={`mt-1 text-sm font-bold ${template === 'modern_pro' ? 'text-white/70' : 'text-slate-500'}`}>
           {jobTitleText}
           {companyText ? <span className="mx-2 opacity-50">•</span> : null}
           {companyText}
         </p>
-      </div>
+      </motion.div>
 
-      <div className="flex justify-center gap-2 mb-6 flex-wrap">
+      <motion.div variants={itemVariants} className="flex justify-center gap-2 mb-6 flex-wrap">
         {data?.facebook && (
           <a
             href={toText(data.facebook)}
@@ -882,9 +924,9 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
             <Youtube size={18} />
           </a>
         )}
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
         {data?.phone && (
           <ActionButton
             icon={<Phone size={18} style={{ color: themeColor }} />}
@@ -922,9 +964,9 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
             onClick={() => trackClick('website')}
           />
         )}
-      </div>
+      </motion.div>
 
-      <div className="mt-4 space-y-3">
+      <motion.div variants={itemVariants} className="mt-4 space-y-3">
         <PrimaryButton
           icon={<UserPlus size={18} />}
           label={t.exchangeContact}
@@ -934,7 +976,23 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
           }}
         />
 
-        {/* Follow Button (New) */}
+        {data?.bookingUrl !== undefined && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setBookingModalOpen(true)}
+            className={`w-full ${btnBase} px-4 py-4 text-white text-sm shadow-xl flex items-center justify-center gap-2`}
+            style={{
+              backgroundColor: themeColor,
+              filter: 'brightness(1.1)',
+              boxShadow: `0 10px 25px -5px ${themeColor}40`
+            }}
+          >
+            <Calendar size={18} />
+            <span className="font-bold">{t.bookingAction || "Book Now"}</span>
+          </motion.button>
+        )}
+
         {/* Follow Button (New) */}
         {!isFollowing ? (
           <button
@@ -957,7 +1015,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
             className={`w-full ${btnBase} bg-black text-white px-4 py-3`}
           >
             <Wallet size={18} />
-            <span className="text-xs font-extrabold">Apple</span>
+            <span className="text-xs font-extrabold">{t.apple || "Apple"}</span>
           </button>
 
           <button
@@ -965,7 +1023,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
             className={`w-full ${btnBase} bg-white text-slate-900 border border-slate-200 px-4 py-3`}
           >
             <CreditCard size={18} style={{ color: themeColor }} />
-            <span className="text-xs font-extrabold">Google</span>
+            <span className="text-xs font-extrabold">{t.google || "Google"}</span>
           </button>
         </div>
 
@@ -980,20 +1038,17 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
           />
         )}
 
-        <button
-          onClick={downloadVCard}
-          className={`w-full ${btnBase} px-4 py-4 text-white text-sm shadow-xl`}
-          style={{ backgroundColor: themeColor, boxShadow: palette.glow }}
-        >
-          <UserPlus size={18} />
-          {t.saveContact}
-        </button>
-      </div>
-    </div>
-  ), [nameText, jobTitleText, companyText, data, themeColor, t, trackClick, btnBase, palette.glow, downloadVCard, template, toText]);
+      </motion.div>
+    </motion.div>
+  ), [nameText, jobTitleText, companyText, data, themeColor, t, trackClick, btnBase, palette.glow, downloadVCard, template, toText, containerVariants, itemVariants]);
 
   const ProductsTabView = useMemo(() => (
-    <div className="pt-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="pt-6 pb-8"
+    >
       {products.length === 0 ? (
         <div className="text-center text-slate-400 py-12">
           <ShoppingBag size={48} className="mx-auto mb-3 opacity-20" />
@@ -1002,7 +1057,11 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {products.map((prod) => (
-            <div key={prod.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
+            <motion.div
+              variants={itemVariants}
+              key={prod.id}
+              className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100"
+            >
               <div className="h-44 w-full bg-slate-100 relative overflow-hidden">
                 {prod.imageUrl ? (
                   <img src={toText(prod.imageUrl)} className="w-full h-full object-cover" alt="" loading="lazy" />
@@ -1032,11 +1091,11 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
                   {t.buy}
                 </button>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
-    </div>
+    </motion.div>
   ), [products, t, themeColor, palette.glow, btnBase, handleBuyProduct, toText]);
 
   const PortfolioTabView = useMemo(() => {
@@ -1181,7 +1240,12 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
 
 
     return (
-      <div className="pt-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="pt-6 pb-8"
+      >
         {/* Category Filter */}
         <div className="flex gap-2 overflow-x-auto pb-4 hide-scrollbar mb-4 px-1">
           {categories.map(cat => (
@@ -1210,15 +1274,21 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
               const cat = item.category || 'other';
               const isVideo = item.mediaType === 'video';
 
-              if (cat === 'development') return <DevCard key={item.id} item={item} />;
-              if (cat === 'design') return <DesignCard key={item.id} item={item} />;
-              if (cat === 'video' || isVideo) return <VideoCard key={item.id} item={item} />;
+              let Card;
+              if (cat === 'development') Card = DevCard;
+              else if (cat === 'design') Card = DesignCard;
+              else if (cat === 'video' || isVideo) Card = VideoCard;
+              else Card = StandardCard;
 
-              return <StandardCard key={item.id} item={item} />;
+              return (
+                <motion.div variants={itemVariants} key={item.id}>
+                  <Card item={item} />
+                </motion.div>
+              );
             })}
           </div>
         )}
-      </div>
+      </motion.div>
     );
   }, [portfolio, portfolioCategory, t, themeColor, palette.glow, btnBase, trackClick, toText]);
 
@@ -1259,8 +1329,8 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ${template === 'modern_pro' ? 'bg-[#050511]' : 'bg-slate-100'}`}>
-      <div className={`w-full max-w-md relative ${softCard}`}>
+    <div className={`profile-view-container min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ${template === 'modern_pro' ? 'bg-[#050511]' : 'bg-slate-100'}`}>
+      <div className={`profile-card-main w-full max-w-md relative ${softCard}`}>
         {HeaderView}
 
         <div className="relative px-6">
@@ -1277,20 +1347,24 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
                 >
                   {t.tabInfo}
                 </button>
-                <button
-                  onClick={() => setActiveTab('products')}
-                  className={`flex-1 py-2 rounded-2xl text-xs font-extrabold transition-all ${tabActiveStyle(activeTab === 'products')}`}
-                  style={activeTab === 'products' ? { backgroundColor: themeColor } : undefined}
-                >
-                  {t.tabProducts}
-                </button>
-                <button
-                  onClick={() => setActiveTab('portfolio')}
-                  className={`flex-1 py-2 rounded-2xl text-xs font-extrabold transition-all ${tabActiveStyle(activeTab === 'portfolio')}`}
-                  style={activeTab === 'portfolio' ? { backgroundColor: themeColor } : undefined}
-                >
-                  {t.portfolioTitle || "Works"}
-                </button>
+                {products.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab('products')}
+                    className={`flex-1 py-2 rounded-2xl text-xs font-extrabold transition-all ${tabActiveStyle(activeTab === 'products')}`}
+                    style={activeTab === 'products' ? { backgroundColor: themeColor } : undefined}
+                  >
+                    {t.tabProducts}
+                  </button>
+                )}
+                {portfolio.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab('portfolio')}
+                    className={`flex-1 py-2 rounded-2xl text-xs font-extrabold transition-all ${tabActiveStyle(activeTab === 'portfolio')}`}
+                    style={activeTab === 'portfolio' ? { backgroundColor: themeColor } : undefined}
+                  >
+                    {t.portfolioTitle}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1300,83 +1374,91 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
           </div>
         </div>
 
-        <div className={`py-4 text-center text-xs mt-auto ${template === 'modern_pro' ? 'bg-black/20 text-white/30' : 'bg-slate-50 text-slate-400'}`}>Digital Card System © 2024</div>
+        <div className={`py-4 text-center text-xs mt-auto ${template === 'modern_pro' ? 'bg-black/20 text-white/30' : 'bg-slate-50 text-slate-400'}`}>{t.systemCopyright || "Digital Card System © 2024"}</div>
       </div>
 
-      {isLeadFormOpen && (
-        <Suspense fallback={null}>
-          <LeadCaptureModal
-            adminId={profileData.adminId}
-            employeeId={profileData.id}
-            themeColor={themeColor}
-            onClose={() => setIsLeadFormOpen(false)}
-            onSuccess={() => trackClick('exchange_contact')}
-            t={t}
-            initialInterest={leadInterest}
-          />
-        </Suspense>
-      )}
+      {
+        isLeadFormOpen && (
+          <Suspense fallback={null}>
+            <LeadCaptureModal
+              adminId={profileData.adminId}
+              employeeId={profileData.id}
+              themeColor={themeColor}
+              onClose={() => setIsLeadFormOpen(false)}
+              onSuccess={() => trackClick('exchange_contact')}
+              t={t}
+              initialInterest={leadInterest}
+            />
+          </Suspense>
+        )
+      }
 
-      {showWalletModal && (
-        <Suspense fallback={null}>
-          <WalletPreviewModal type={showWalletModal} data={data} onClose={() => setShowWalletModal(null)} t={t} />
-        </Suspense>
-      )}
+      {
+        showWalletModal && (
+          <Suspense fallback={null}>
+            <WalletPreviewModal type={showWalletModal} data={data} onClose={() => setShowWalletModal(null)} t={t} />
+          </Suspense>
+        )
+      }
 
       {/* Payment Selection Modal */}
-      {paymentModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-bold text-slate-800">{t.choosePayment || "Choose Payment Method"}</h3>
-              <button onClick={() => setPaymentModalOpen(false)}><X size={20} className="text-slate-400" /></button>
-            </div>
-            <div className="p-4 space-y-3">
-              {paymentConfig?.stripe?.enabled && (
-                <button onClick={() => handlePaymentSelect('stripe')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-3 group">
-                  <div className="w-10 h-6 bg-[#635BFF] rounded flex items-center justify-center text-white text-xs font-bold">Stripe</div>
-                  <span className="font-bold text-slate-700 group-hover:text-blue-700">{t.payCard || "Pay with Card"}</span>
-                </button>
-              )}
-              {paymentConfig?.tabby?.enabled && (
-                <button onClick={() => handlePaymentSelect('tabby')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all flex items-center gap-3 group">
-                  <div className="w-10 h-6 bg-[#3EEDA4] rounded flex items-center justify-center text-black text-xs font-bold">Tabby</div>
-                  <span className="font-bold text-slate-700 group-hover:text-emerald-700">{t.payTabby || "Split in 4 (Interest-free)"}</span>
-                </button>
-              )}
-              {paymentConfig?.tamara?.enabled && (
-                <button onClick={() => handlePaymentSelect('tamara')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-yellow-500 hover:bg-yellow-50 transition-all flex items-center gap-3 group">
-                  <div className="w-10 h-6 bg-[#ECC94B] rounded flex items-center justify-center text-black text-xs font-bold">Tamara</div>
-                  <span className="font-bold text-slate-700 group-hover:text-yellow-700">{t.payTamara || "Split in 3 (Interest-free)"}</span>
-                </button>
-              )}
+      {
+        paymentModalOpen && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="font-bold text-slate-800">{t.choosePayment || "Choose Payment Method"}</h3>
+                <button onClick={() => setPaymentModalOpen(false)}><X size={20} className="text-slate-400" /></button>
+              </div>
+              <div className="p-4 space-y-3">
+                {paymentConfig?.stripe?.enabled && (
+                  <button onClick={() => handlePaymentSelect('stripe')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-3 group">
+                    <div className="w-10 h-6 bg-[#635BFF] rounded flex items-center justify-center text-white text-xs font-bold">Stripe</div>
+                    <span className="font-bold text-slate-700 group-hover:text-blue-700">{t.payCard || "Pay with Card"}</span>
+                  </button>
+                )}
+                {paymentConfig?.tabby?.enabled && (
+                  <button onClick={() => handlePaymentSelect('tabby')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all flex items-center gap-3 group">
+                    <div className="w-10 h-6 bg-[#3EEDA4] rounded flex items-center justify-center text-black text-xs font-bold">Tabby</div>
+                    <span className="font-bold text-slate-700 group-hover:text-emerald-700">{t.split4 || "Split in 4 (Interest-free)"}</span>
+                  </button>
+                )}
+                {paymentConfig?.tamara?.enabled && (
+                  <button onClick={() => handlePaymentSelect('tamara')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-yellow-500 hover:bg-yellow-50 transition-all flex items-center gap-3 group">
+                    <div className="w-10 h-6 bg-[#ECC94B] rounded flex items-center justify-center text-black text-xs font-bold">Tamara</div>
+                    <span className="font-bold text-slate-700 group-hover:text-yellow-700">{t.split3 || "Split in 3 (Interest-free)"}</span>
+                  </button>
+                )}
 
-              <button onClick={() => handlePaymentSelect('cash')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-slate-500 hover:bg-slate-50 transition-all flex items-center gap-3 group mt-2">
-                <div className="w-10 h-6 bg-slate-200 rounded flex items-center justify-center text-slate-500 text-xs font-bold">$</div>
-                <span className="font-bold text-slate-700">{t.cod || "Cash / Inquiry"}</span>
+                <button onClick={() => handlePaymentSelect('cash')} className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-slate-500 hover:bg-slate-50 transition-all flex items-center gap-3 group mt-2">
+                  <div className="w-10 h-6 bg-slate-200 rounded flex items-center justify-center text-slate-500 text-xs font-bold">$</div>
+                  <span className="font-bold text-slate-700">{t.cod || "Cash / Inquiry"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+      {/* Rate Modal */}
+      {
+        rateModalOpen && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center space-y-4">
+              <h3 className="font-bold text-xl text-slate-800">{t.rateProfile || "Rate this Profile"}</h3>
+              <div className="flex justify-center gap-2">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button key={star} onClick={() => handleRate(star)} className="p-2 hover:scale-110 transition-transform">
+                    <Star size={32} className="text-yellow-400 fill-yellow-400 drop-shadow-sm" />
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setRateModalOpen(false)} className="text-sm text-slate-400 font-bold hover:text-slate-600">
+                {t.cancel || "Cancel"}
               </button>
             </div>
           </div>
-        </div>
-      )}
-      {/* Rate Modal */}
-      {rateModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center space-y-4">
-            <h3 className="font-bold text-xl text-slate-800">{t.rateProfile || "Rate this Profile"}</h3>
-            <div className="flex justify-center gap-2">
-              {[1, 2, 3, 4, 5].map(star => (
-                <button key={star} onClick={() => handleRate(star)} className="p-2 hover:scale-110 transition-transform">
-                  <Star size={32} className="text-yellow-400 fill-yellow-400 drop-shadow-sm" />
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setRateModalOpen(false)} className="text-sm text-slate-400 font-bold hover:text-slate-600">
-              {t.cancel || "Cancel"}
-            </button>
-          </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Follow Modal */}
       {
@@ -1393,6 +1475,25 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
           </Suspense>
         )
       }
+
+      {bookingModalOpen && (
+        <Suspense fallback={null}>
+          <BookingModal
+            adminId={profileData.adminId}
+            employeeId={profileData.id}
+            themeColor={themeColor}
+            onClose={() => setBookingModalOpen(false)}
+            t={t}
+            bookingSettings={profileData.bookingSettings}
+          />
+        </Suspense>
+      )}
+      {/* AI Chatbot (Floating) */}
+      <ProfileChatbot
+        profileData={{ ...profileData, products, portfolio }}
+        themeColor={themeColor}
+        t={t}
+      />
     </div >
   );
 }

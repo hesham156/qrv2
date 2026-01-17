@@ -14,7 +14,8 @@ import {
     Cell,
     Legend
 } from 'recharts';
-import { ArrowUpRight, MousePointer, Eye } from 'lucide-react';
+import { ArrowUpRight, MousePointer, Eye, Smartphone, Monitor, Globe, Sparkles, Activity, Clock } from 'lucide-react';
+import { optimizeTextWithAI } from '../../services/aiService';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -23,10 +24,12 @@ export default function AnalyticsView({ employees = [], user }) {
     const [loading, setLoading] = useState(true);
     const [selectedEmpId, setSelectedEmpId] = useState('all');
     const [dateRange, setDateRange] = useState('30'); // days
+    const [aiInsight, setAiInsight] = useState('');
+    const [generatingInsight, setGeneratingInsight] = useState(false);
 
     // Compute stats from events
     const stats = useMemo(() => {
-        if (!events.length) return { views: 0, clicks: 0, ctr: 0, dailyData: [], linkData: [], topCountries: [] };
+        if (!events.length) return { views: 0, clicks: 0, ctr: 0, dailyData: [], linkData: [], topCountries: [], deviceData: [], browserData: [], activityStream: [] };
 
         let filtered = events;
         if (selectedEmpId !== 'all') {
@@ -51,6 +54,8 @@ export default function AnalyticsView({ employees = [], user }) {
         const productStats = {};
         const storyStats = {};
         const projectStats = {};
+        const deviceMap = {};
+        const browserMap = {};
 
         filtered.forEach(e => {
             // Daily Trends
@@ -59,6 +64,12 @@ export default function AnalyticsView({ employees = [], user }) {
                 if (e.type === 'view') daysMap[dateKey].views++;
                 if (e.type === 'click') daysMap[dateKey].clicks++;
             }
+
+            // Device & Browser
+            const dev = e.device || 'Other';
+            const brow = e.browser || 'Other';
+            deviceMap[dev] = (deviceMap[dev] || 0) + 1;
+            browserMap[brow] = (browserMap[brow] || 0) + 1;
 
             // Product Stats
             if (e.type === 'product_click') {
@@ -102,8 +113,37 @@ export default function AnalyticsView({ employees = [], user }) {
         const topStories = Object.values(storyStats).sort((a, b) => b.views - a.views).slice(0, 5);
         const topProjects = Object.values(projectStats).sort((a, b) => b.clicks - a.clicks).slice(0, 5);
 
-        return { views, clicks, ctr, dailyData, linkData, topProducts, topStories, topProjects };
+        const deviceData = Object.keys(deviceMap).map(key => ({ name: key, value: deviceMap[key] }));
+        const browserData = Object.keys(browserMap).map(key => ({ name: key, value: browserMap[key] }));
+        const activityStream = [...filtered].sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)).slice(0, 10);
+
+        return { views, clicks, ctr, dailyData, linkData, topProducts, topStories, topProjects, deviceData, browserData, activityStream };
     }, [events, selectedEmpId, dateRange]);
+
+    // AI Insight Generator
+    useEffect(() => {
+        if (!stats.views || aiInsight) return;
+
+        const generateInsight = async () => {
+            setGeneratingInsight(true);
+            try {
+                const context = `
+                    Views: ${stats.views}, Clicks: ${stats.clicks}, CTR: ${stats.ctr}%.
+                    Top Channel: ${stats.linkData[0]?.name || 'N/A'}.
+                `;
+                const prompt = `Based on these digital business card stats, give one professional advice to the owner to improve engagement. ${context}`;
+                const result = await optimizeTextWithAI(prompt, 'analytics_insight', 'en');
+                setAiInsight(result);
+            } catch (err) {
+                console.error("AI Insight Error:", err);
+            } finally {
+                setGeneratingInsight(false);
+            }
+        };
+
+        const timer = setTimeout(generateInsight, 2000);
+        return () => clearTimeout(timer);
+    }, [stats, aiInsight]);
 
     useEffect(() => {
         // Fetch analytics for all employees of this user
@@ -183,6 +223,28 @@ export default function AnalyticsView({ employees = [], user }) {
                         <option value="7">Last 7 Days</option>
                         <option value="30">Last 30 Days</option>
                     </select>
+                </div>
+            </div>
+
+            {/* AI Insights Panel */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 mb-8 text-white shadow-lg relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform duration-500">
+                    <Sparkles size={120} />
+                </div>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2 text-indigo-100 font-bold text-sm tracking-wider uppercase">
+                        <Sparkles size={16} /> AI Performance Insights
+                    </div>
+                    {generatingInsight ? (
+                        <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <p className="text-white/80 italic">Analyzing your data for smart advice...</p>
+                        </div>
+                    ) : (
+                        <p className="text-lg font-medium leading-relaxed max-w-2xl">
+                            {aiInsight || "Great work! Keep sharing your profile to gather more data for deeper insights."}
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -266,13 +328,89 @@ export default function AnalyticsView({ employees = [], user }) {
                 </div>
             </div>
 
-            {/* Detailed Performance - New Section */}
+            {/* Top Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                {/* Device Distribution */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Smartphone size={18} className="text-blue-500" /> Devices</h3>
+                    <div className="space-y-3">
+                        {stats.deviceData.length > 0 ? stats.deviceData.map((d, i) => (
+                            <div key={i}>
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="text-slate-600">{d.name}</span>
+                                    <span className="font-bold">{d.value}</span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-blue-500 rounded-full"
+                                        style={{ width: `${(d.value / stats.views) * 100}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )) : <p className="text-slate-400 text-xs text-center py-4">No data yet</p>}
+                    </div>
+                </div>
+
+                {/* Top Browsers */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Globe size={18} className="text-emerald-500" /> Browsers</h3>
+                    <div className="space-y-3">
+                        {stats.browserData.length > 0 ? stats.browserData.map((d, i) => (
+                            <div key={i}>
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="text-slate-600">{d.name}</span>
+                                    <span className="font-bold">{d.value}</span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-emerald-500 rounded-full"
+                                        style={{ width: `${(d.value / stats.views) * 100}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )) : <p className="text-slate-400 text-xs text-center py-4">No data yet</p>}
+                    </div>
+                </div>
+
+                {/* Activity Stream */}
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Activity size={18} className="text-purple-500" /> Recent Activity</h3>
+                    <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                        {stats.activityStream.length > 0 ? stats.activityStream.map((act, i) => (
+                            <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-full ${act.type.includes('click') ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                                        {act.type.includes('click') ? <MousePointer size={14} /> : <Eye size={14} />}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-900 capitalize">
+                                            {act.subtype || act.type.replace('_', ' ')}
+                                        </p>
+                                        <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                            <span className="flex items-center gap-0.5"><Clock size={10} /> {new Date(act.timestamp?.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            <span>•</span>
+                                            <span>{act.country || 'Global'}</span>
+                                            <span>•</span>
+                                            <span>{act.device || 'Desktop'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                                    {act.browser || 'Other'}
+                                </div>
+                            </div>
+                        )) : <p className="text-center text-slate-400 text-sm py-4 italic">Waiting for visitor activity...</p>}
+                    </div>
+                </div>
+            </div>
+
+            {/* Detailed Performance */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                 {/* Top Products */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <h3 className="font-bold text-slate-800 mb-4">Top Products</h3>
                     <div className="space-y-4">
-                        {stats.topProducts.map((p, i) => (
+                        {stats?.topProducts?.map((p, i) => (
                             <div key={i} className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">#{i + 1}</div>
@@ -287,7 +425,7 @@ export default function AnalyticsView({ employees = [], user }) {
                                 </div>
                             </div>
                         ))}
-                        {stats.topProducts.length === 0 && <p className="text-center text-slate-400 text-sm py-4">No product clicks yet</p>}
+                        {(!stats?.topProducts || stats.topProducts.length === 0) && <p className="text-center text-slate-400 text-sm py-4">No product clicks yet</p>}
                     </div>
                 </div>
 
@@ -295,7 +433,7 @@ export default function AnalyticsView({ employees = [], user }) {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <h3 className="font-bold text-slate-800 mb-4">Top Stories</h3>
                     <div className="space-y-4">
-                        {stats.topStories.map((s, i) => (
+                        {stats?.topStories?.map((s, i) => (
                             <div key={i} className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center font-bold text-sm">#{i + 1}</div>
@@ -310,7 +448,7 @@ export default function AnalyticsView({ employees = [], user }) {
                                 </div>
                             </div>
                         ))}
-                        {stats.topStories.length === 0 && <p className="text-center text-slate-400 text-sm py-4">No story views yet</p>}
+                        {(!stats?.topStories || stats.topStories.length === 0) && <p className="text-center text-slate-400 text-sm py-4">No story views yet</p>}
                     </div>
                 </div>
 
@@ -318,7 +456,7 @@ export default function AnalyticsView({ employees = [], user }) {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <h3 className="font-bold text-slate-800 mb-4">Top Projects</h3>
                     <div className="space-y-4">
-                        {stats.topProjects.map((p, i) => (
+                        {stats?.topProjects?.map((p, i) => (
                             <div key={i} className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">#{i + 1}</div>
@@ -333,7 +471,7 @@ export default function AnalyticsView({ employees = [], user }) {
                                 </div>
                             </div>
                         ))}
-                        {stats.topProjects.length === 0 && <p className="text-center text-slate-400 text-sm py-4">No project views yet</p>}
+                        {(!stats?.topProjects || stats.topProjects.length === 0) && <p className="text-center text-slate-400 text-sm py-4">No project views yet</p>}
                     </div>
                 </div>
             </div>

@@ -1,7 +1,7 @@
-import {useState} from "react";
-import {  collection, addDoc,  serverTimestamp } from 'firebase/firestore';
-import {appId, db} from "../../config/firebase";
-import {UserPlus, X} from "lucide-react";
+import { useState } from "react";
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { appId, db } from "../../config/firebase";
+import { UserPlus, X } from "lucide-react";
 
 export default function LeadCaptureModal({ adminId, employeeId, themeColor, onClose, onSuccess, t, initialInterest }) {
   const [name, setName] = useState('');
@@ -16,14 +16,14 @@ export default function LeadCaptureModal({ adminId, employeeId, themeColor, onCl
       await addDoc(collection(db, 'artifacts', appId, 'users', adminId, 'employees', employeeId, 'leads'), {
         name,
         phone,
-        interest: initialInterest || 'General Contact', 
+        interest: initialInterest || 'General Contact',
         createdAt: serverTimestamp()
       });
       setSubmitted(true);
       if (onSuccess) onSuccess();
       setTimeout(onClose, 2000);
     } catch (error) {
-      window.alert("Error");
+      window.alert(t.errorTitle || "Error");
     } finally {
       setLoading(false);
     }
@@ -42,13 +42,17 @@ export default function LeadCaptureModal({ adminId, employeeId, themeColor, onCl
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="text-center mb-6">
-                <h3 className="text-xl font-bold text-slate-800">{initialInterest ? t.buy : t.exchangeContact}</h3>
-                {initialInterest && <p className="text-sm font-bold text-indigo-600 bg-indigo-50 p-2 rounded mt-2">{initialInterest}</p>}
-                <p className="text-sm text-slate-500 mt-1">{t.shareData}</p>
+              <h3 className="text-xl font-bold text-slate-800">{initialInterest ? t.buy : t.exchangeContact}</h3>
+              {initialInterest && <p className="text-sm font-bold text-indigo-600 bg-indigo-50 p-2 rounded mt-2">{initialInterest}</p>}
+              <p className="text-sm text-slate-500 mt-1">{t.shareData}</p>
             </div>
             <input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-300" placeholder={t.leadName} />
             <input type="tel" required dir="ltr" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-300 text-right" placeholder={t.leadPhone} />
-            <button type="submit" disabled={loading} className="w-full text-white font-bold py-3 rounded-xl" style={{ backgroundColor: themeColor }}>{loading ? '...' : t.send}</button>
+            <button type="submit" disabled={loading} className="w-full text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2" style={{ backgroundColor: themeColor }}>
+              {loading ? (
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : t.send}
+            </button>
           </form>
         )}
       </div>

@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { parseCVWithAI as aiParse } from './aiService';
 
 // Use Unpkg for worker to ensure mjs support for v5+
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -91,4 +92,16 @@ export const parseCVText = (text) => {
     }
 
     return result;
+};
+
+/**
+ * Intelligent CV Parsing using Gemini AI
+ */
+export const parseCVWithAI = async (text) => {
+    try {
+        return await aiParse(text);
+    } catch (error) {
+        console.error("AI Parse failed, falling back to heuristic:", error);
+        return parseCVText(text);
+    }
 };

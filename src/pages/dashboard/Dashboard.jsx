@@ -1,4 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 // Dashboard Component
 import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
@@ -6,14 +8,18 @@ import { UserPlus, LogOut, Plus, AlertCircle } from 'lucide-react';
 // استيراد المكونات الفرعية
 import EmployeeCard from '../../components/dashboard/EmployeeCard'; // Keep eager for cards
 import EmployeeForm from '../../components/dashboard/EmployeeForm'; // Keep eager for speed or lazy? Form is heavy, maybe lazy.
+import CardDetailsView from '../../components/dashboard/CardDetailsView'; // New View
 import DashboardLayout from '../../layouts/DashboardLayout';
 import AdminView from '../admin/AdminView'; // Heavy
 import AnalyticsView from './AnalyticsView'; // Heavy
 import LeadsView from './LeadsView'; // Heavy
 import ProductsView from './ProductsView';
+import OnboardingWizard from '../../components/onboarding/OnboardingWizard';
+import { updateDoc } from 'firebase/firestore';
 
 import { useSEO } from '../../hooks/useSEO';
 import { isItemLocked } from '../../utils/planHelpers';
+import PageTransition from '../../components/ui/PageTransition';
 
 // Lazy Load Modals
 const QRModal = lazy(() => import('../../components/modals/QRModal'));
@@ -30,21 +36,52 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
   useSEO("Dashboard", "Manage your digital business cards and analyze performance.");
 
 
-  const [employees, setEmployees] = useState([])
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // State primarily derived from URL now, but we keep these for compatibility 
+  // and easy binding to modals. They will be synchronized in useEffect.
   const [isFormOpen, setIsFormOpen] = useState(false)
-  // const [selectedEmployee, setSelectedEmployee] = useState(null) // Unused
+  const [editingEmployee, setEditingEmployee] = useState(null)
+
   const [analyticsEmployee, setAnalyticsEmployee] = useState(null)
   const [leadsEmployee, setLeadsEmployee] = useState(null)
   const [previewEmployee, setPreviewEmployee] = useState(null)
-  const [editingEmployee, setEditingEmployee] = useState(null)
-  const [permissionError, setPermissionError] = useState(false)
   const [productManagerEmployee, setProductManagerEmployee] = useState(null)
   const [storiesManagerEmployee, setStoriesManagerEmployee] = useState(null)
-  const [qrEmployee, setQrEmployee] = useState(null) // New state for QR Modal
+  const [qrEmployee, setQrEmployee] = useState(null)
+
   const [portfolioModal, setPortfolioModal] = useState(null)
+
+  // New: Selected Card for Dashboard View
+  const [selectedCardId, setSelectedCardId] = useState(null)
+  const [selectedCardData, setSelectedCardData] = useState(null)
+
+  const [employees, setEmployees] = useState([])
+  const [permissionError, setPermissionError] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [currentView, setCurrentView] = useState('cards'); // 'cards', 'analytics', 'leads', 'products'
+  const [currentView, setCurrentView] = useState('cards'); // 'cards', 'analytics', 'leads', 'products', 'card_details'
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    // Show onboarding if no employees and not skipped
+    if (employees.length === 0 && !user?.hasSkippedOnboarding && !permissionError) {
+      setShowOnboarding(true);
+    } else {
+      setShowOnboarding(false);
+    }
+  }, [employees.length, user?.hasSkippedOnboarding, permissionError]);
+
+  const handleSkipOnboarding = async () => {
+    setShowOnboarding(false);
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid), {
+        hasSkippedOnboarding: true
+      });
+    } catch (e) {
+      console.error("Error skipping onboarding:", e);
+    }
+  };
 
   useEffect(() => {
     if (!user) return
@@ -68,26 +105,111 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
     )
 
     return () => unsubscribe()
+
   }, [user])
 
-  const handleDelete = async (emp) => {
-    if (window.confirm(t.deleteConfirm)) {
-      try {
-        if (emp.slug) {
-          await deleteDoc(doc(db, "artifacts", appId, "public", "data", "slugs", emp.slug))
-        }
-        await deleteDoc(doc(db, "artifacts", appId, "users", user.uid, "employees", emp.id))
-      } catch (e) {
-        console.error("Error deleting:", e)
-        window.alert(t.deleteError)
-      }
-    }
-  }
+  // --- URL State Synchronization ---
+  useEffect(() => {
+    const modalType = searchParams.get('modal');
+    const cardId = searchParams.get('cardId');
+    const viewType = searchParams.get('view'); // New param
 
-  const handleEdit = (employee) => {
-    setEditingEmployee(employee)
-    setIsFormOpen(true)
-  }
+    // Helper to find employee
+    const findEmp = () => employees.find(e => e.id === cardId) || null;
+
+    // Reset all first
+    setIsFormOpen(false);
+    setQrEmployee(null);
+    setAnalyticsEmployee(null);
+    setLeadsEmployee(null);
+    setPreviewEmployee(null);
+    setProductManagerEmployee(null);
+    setStoriesManagerEmployee(null);
+    setPortfolioModal(null);
+
+    // Handle View Switching (Main Dashboard vs Single Card)
+    if (viewType === 'card' && cardId) {
+      setCurrentView('card_details');
+      setSelectedCardId(cardId);
+      // We need to set the data. if employees loaded, set it.
+      const emp = employees.find(e => e.id === cardId);
+      if (emp) setSelectedCardData(emp);
+    } else if (currentView === 'card_details' && !viewType) {
+      // If URL cleared but state is card_details, go back
+      setCurrentView('cards');
+      setSelectedCardId(null);
+      setSelectedCardData(null);
+    }
+
+    if (!modalType) return;
+
+    const emp = findEmp();
+
+    // Map URL to State
+    switch (modalType) {
+      case 'create':
+        setEditingEmployee(null);
+        setIsFormOpen(true);
+        break;
+      case 'edit':
+        if (emp) {
+          setEditingEmployee(emp);
+          setIsFormOpen(true);
+        }
+        break;
+      case 'qr':
+        setQrEmployee(emp);
+        break;
+      case 'analytics':
+        setAnalyticsEmployee(emp);
+        break;
+      case 'leads':
+        setLeadsEmployee(emp);
+        break;
+      case 'preview':
+        setPreviewEmployee(emp);
+        break;
+      case 'products':
+        setProductManagerEmployee(emp);
+        break;
+      case 'stories':
+        setStoriesManagerEmployee(emp);
+        break;
+      case 'portfolio':
+        setPortfolioModal(emp);
+        break;
+      default:
+        break;
+    }
+  }, [searchParams, employees, currentView]); // Added dependencies
+
+  // --- Handlers (Now just update URL) ---
+  const closeModal = () => {
+    // Keep the 'view' and 'id' params if we are in card mode
+    if (currentView === 'card_details' && selectedCardId) {
+      setSearchParams({ view: 'card', cardId: selectedCardId });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const handleEdit = (employee) => setSearchParams({ modal: 'edit', cardId: employee.id });
+
+  // New Handler for Managing Card (Deep Dive)
+  const handleManageCard = (employee) => {
+    // Navigate to dedicated route
+    // Since we are in Dashboard, we can use navigation
+    // But Dashboard is lazily loaded... Wait, we are in Dashboard.jsx.
+    // We need useNavigate.
+    // Let's add useNavigate hook at top.
+
+    // Actually, simpler:
+    window.location.href = `/dashboard/card/${employee.id}`;
+    // Or prefer SPA navigation if possible, but Dashboard code needs refactor to import useNavigate.
+    // Let's assume we can just redirect for now or refactor to use hook.
+  };
+
+  const handleBackToDashboard = () => setSearchParams({});
 
   const handleAddNew = () => {
     // Subscription Limit Check
@@ -96,9 +218,23 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
       setShowUpgradeModal(true);
       return;
     }
-    setEditingEmployee(null)
-    setIsFormOpen(true)
-  }
+    setSearchParams({ modal: 'create' });
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: 20 },
+    show: { opacity: 1, scale: 1, y: 0 }
+  };
 
   return (
     <DashboardLayout
@@ -150,25 +286,41 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
               {employees.map((employee, index) => {
                 const isLocked = isItemLocked(index, user);
                 return (
-                  <div key={employee.id} className="relative">
+                  <motion.div variants={itemVariants} key={employee.id} className="relative">
                     <EmployeeCard
                       employee={employee}
                       userId={user.uid}
                       t={t}
                       lang={lang}
-                      onDelete={() => handleDelete(employee)}
+                      onDelete={() => {
+                        // Delete logic remains direct as it's not a modal
+                        if (window.confirm(t.deleteConfirm)) {
+                          (async () => {
+                            try {
+                              if (employee.slug) await deleteDoc(doc(db, "artifacts", appId, "public", "data", "slugs", employee.slug));
+                              await deleteDoc(doc(db, "artifacts", appId, "users", user.uid, "employees", employee.id));
+                            } catch (e) { console.error(e); window.alert(t.deleteError); }
+                          })();
+                        }
+                      }}
                       onEdit={() => !isLocked && handleEdit(employee)}
-                      onShowQR={() => !isLocked && setQrEmployee(employee)}
-                      onShowAnalytics={() => !isLocked && setAnalyticsEmployee(employee)}
-                      onShowLeads={() => !isLocked && setLeadsEmployee(employee)}
-                      onPreview={() => !isLocked && setPreviewEmployee(employee)}
-                      onManageProducts={() => !isLocked && setProductManagerEmployee(employee)}
-                      onManageStories={() => !isLocked && setStoriesManagerEmployee(employee)}
-                      onManagePortfolio={() => !isLocked && setPortfolioModal(employee)}
+                      onManage={() => !isLocked && handleManageCard(employee)} // New Prop
+                      onShowQR={() => !isLocked && setSearchParams({ modal: 'qr', cardId: employee.id })}
+                      onShowAnalytics={() => !isLocked && setSearchParams({ modal: 'analytics', cardId: employee.id })}
+                      onShowLeads={() => !isLocked && setSearchParams({ modal: 'leads', cardId: employee.id })}
+                      onPreview={() => !isLocked && setSearchParams({ modal: 'preview', cardId: employee.id })}
+                      onManageProducts={() => !isLocked && setSearchParams({ modal: 'products', cardId: employee.id })}
+                      onManageStories={() => !isLocked && setSearchParams({ modal: 'stories', cardId: employee.id })}
+                      onManagePortfolio={() => !isLocked && setSearchParams({ modal: 'portfolio', cardId: employee.id })}
                     />
 
                     {isLocked && (
@@ -188,15 +340,28 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
                         </button>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           )}
         </>
       )}
 
       {/* Placeholders for other views (Or we could render different components) */}
+      {currentView === 'card_details' && selectedCardData && (
+        <CardDetailsView
+          employee={selectedCardData}
+          onBack={handleBackToDashboard}
+          t={t}
+          lang={lang}
+          onAction={(actionId) => {
+            if (actionId === 'preview') setSearchParams({ view: 'card', cardId: selectedCardId, modal: 'preview' });
+            else setSearchParams({ view: 'card', cardId: selectedCardId, modal: actionId });
+          }}
+        />
+      )}
+
       {currentView === 'analytics' && (
         <AnalyticsView employees={employees} user={user} />
       )}
@@ -207,29 +372,30 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
 
       {currentView === 'products' && (
         <ProductsView
+
           employees={employees}
-          onManageProducts={setProductManagerEmployee}
+          onManageProducts={(emp) => setSearchParams({ modal: 'products', cardId: emp.id })}
           t={t}
         />
       )}
 
       {currentView === 'admin' && (
-        <AdminView t={t} />
+        <PageTransition><AdminView t={t} /></PageTransition>
       )}
 
       {isFormOpen && (
-        <EmployeeForm onClose={() => setIsFormOpen(false)} initialData={editingEmployee} userId={user.uid} user={user} t={t} />
+        <EmployeeForm onClose={closeModal} initialData={editingEmployee} userId={user.uid} user={user} t={t} />
       )}
 
       {/* Render QRModal with lang prop */}
       <Suspense fallback={null}>
         {qrEmployee && (
-          <QRModal employee={qrEmployee} userId={user.uid} user={user} onClose={() => setQrEmployee(null)} t={t} lang={lang} />
+          <QRModal employee={qrEmployee} userId={user.uid} user={user} onClose={closeModal} t={t} lang={lang} />
         )}
 
         {/* Render AnalyticsModal with lang prop */}
         {analyticsEmployee && (
-          <AnalyticsModal employee={analyticsEmployee} onClose={() => setAnalyticsEmployee(null)} t={t} lang={lang} />
+          <AnalyticsModal employee={analyticsEmployee} onClose={closeModal} t={t} lang={lang} />
         )}
 
         {/* Render LeadsListModal with lang prop */}
@@ -237,21 +403,21 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
           <LeadsListModal
             userId={user.uid}
             employee={leadsEmployee}
-            onClose={() => setLeadsEmployee(null)}
+            onClose={closeModal}
             t={t}
             lang={lang}
           />
         )}
 
         {previewEmployee && (
-          <PreviewModal employee={previewEmployee} userId={user.uid} onClose={() => setPreviewEmployee(null)} t={t} />
+          <PreviewModal employee={previewEmployee} userId={user.uid} onClose={closeModal} t={t} />
         )}
 
         {productManagerEmployee && (
           <ProductsManagerModal
             userId={user.uid}
             employee={productManagerEmployee}
-            onClose={() => setProductManagerEmployee(null)}
+            onClose={closeModal}
             t={t}
             user={user}
             onUpgrade={() => setShowUpgradeModal(true)}
@@ -262,7 +428,7 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
           <StoriesManagerModal
             userId={user.uid}
             employee={storiesManagerEmployee}
-            onClose={() => setStoriesManagerEmployee(null)}
+            onClose={closeModal}
             t={t}
           />
         )}
@@ -271,7 +437,7 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
           <PortfolioManagerModal
             userId={user.uid}
             employee={portfolioModal}
-            onClose={() => setPortfolioModal(null)}
+            onClose={closeModal}
             t={t}
             user={user}
             onUpgrade={() => setShowUpgradeModal(true)}
@@ -294,6 +460,15 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
           />
         )}
       </Suspense>
+
+      {showOnboarding && (
+        <OnboardingWizard
+          user={user}
+          t={t}
+          onComplete={() => setShowOnboarding(false)}
+          onSkip={handleSkipOnboarding}
+        />
+      )}
 
     </DashboardLayout>
   )

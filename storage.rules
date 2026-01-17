@@ -1,0 +1,27 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper: Check if user is signed in
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Check if user owns the folder
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Rules for User uploads
+    match /users/{userId}/{allPaths=**} {
+      // Allow owners to read/write their own files
+      allow read, write: if isOwner(userId);
+    }
+
+    // Rules for public assets (if any)
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated(); // Or restrict to admins
+    }
+  }
+}

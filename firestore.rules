@@ -35,12 +35,9 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
-    // 2. Users Collection
     match /artifacts/{appId}/users/{userId} {
       // Owner can read/write their own profile. Admin can access all.
-      // Data in this document is not highly sensitive (email, plan), so public read is allowed for plan checks.
-      allow read: if true; 
-      allow write: if isOwner(userId) || isAdmin(appId);
+      allow read, write: if isOwner(userId) || isAdmin(appId);
       
       // 3. Employees (The Digital Cards)
       match /employees/{empId} {
@@ -63,20 +60,28 @@ service cloud.firestore {
           allow write: if isOwner(userId) || isAdmin(appId);
         }
 
-        // 5. Leads (Sensitive Data)
         match /leads/{leadId} {
           // Public Create: Visitors can submit forms
-          allow create: if true;
+          // Validation: Ensure basic fields exist and are reasonably sized to prevent spam
+          // For 'booking' type, we just need name and phone.
+          allow create: if request.resource.data.name.size() > 0 
+                      && (request.resource.data.interest.size() > 0 || request.resource.data.email.size() > 5 || request.resource.data.phone.size() > 5);
           // Read/Update/Delete: Only Owner or Admin
           allow read, update, delete: if isOwner(userId) || isAdmin(appId);
         }
 
-        // 5.1 Followers (Email List)
         match /followers/{followerId} {
           // Public Create: Visitors can subscribe
-          allow create: if true;
+          allow create: if request.resource.data.email.size() > 5;
           // Read/Update/Delete: Only Owner or Admin
           allow read, update, delete: if isOwner(userId) || isAdmin(appId);
+        }
+        
+        // 5. Appointments (Public Read required for availability check)
+        match /appointments/{apptId} {
+          allow read: if true;
+          allow create: if request.resource.data.bookingDate.size() > 0;
+          allow update, delete: if isOwner(userId) || isAdmin(appId);
         }
 
         // 6. Analytics Events
@@ -90,12 +95,9 @@ service cloud.firestore {
                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats']));
         }
 
-        // 7. Payment Settings (Config for Stripe/Tabby/Tamara)
         match /payment_settings/{docId} {
-          // Public Read: Needed for "Buy" button to know enabled gateways (Warning: exposed keys)
-          allow read: if true;
-          // Write: Only Owner
-          allow write: if isOwner(userId) || isAdmin(appId);
+          // Public Read is restricted.
+          allow read, write: if isOwner(userId) || isAdmin(appId);
         }
       }
 

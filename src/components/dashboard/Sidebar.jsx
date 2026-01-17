@@ -31,7 +31,7 @@ export default function Sidebar({
     ];
 
     if (user?.role === 'super_admin') {
-        menuItems.push({ id: 'admin', label: 'Platform Admin', icon: Shield });
+        menuItems.push({ id: 'admin', label: t.platformAdmin || 'Platform Admin', icon: Shield });
     }
 
     return (
@@ -96,7 +96,7 @@ export default function Sidebar({
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-white truncate">{user?.email}</p>
-                            <p className="text-xs text-slate-400 truncate">Admin</p>
+                            <p className="text-xs text-slate-400 truncate">{t.admin || 'Admin'}</p>
                         </div>
                     </div>
 

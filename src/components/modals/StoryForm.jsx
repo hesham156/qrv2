@@ -19,7 +19,7 @@ export default function StoryForm({ onSave, onCancel, t }) {
       const url = await uploadToWordPress(file);
       setFormData(prev => ({ ...prev, mediaUrl: url }));
     } catch (error) {
-      alert("Upload failed: " + error.message);
+      alert((t.uploadFailed || "Upload failed") + ": " + error.message);
     } finally {
       setUploading(false);
     }

@@ -12,7 +12,9 @@ import {
   Eye,
   ShoppingBag,
   CircleDashed,
-  Briefcase
+  Briefcase,
+  Settings,
+  MoreHorizontal
 } from 'lucide-react';
 
 export default function EmployeeCard({
@@ -25,7 +27,8 @@ export default function EmployeeCard({
   onPreview,
   onManageProducts,
   onManageStories,
-  onManagePortfolio, // ✅ Portfolio
+  onManagePortfolio,
+  onManage, // New Prop
   t,
   lang
 }) {
@@ -156,71 +159,33 @@ export default function EmployeeCard({
       </div>
 
       {/* ✅ صف أزرار الإدارة: منتجات + قصص */}
-      <div className="flex gap-2 mb-2">
+      {/* Optimized Actions Row */}
+      <div className="flex items-center gap-2 mt-2">
         <button
-          onClick={onManageProducts}
-          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold border border-slate-200 text-indigo-600 hover:bg-indigo-50 transition-colors"
+          onClick={() => {
+            // Navigate to dedicated route
+            window.location.href = `/dashboard/card/${employee.id}`;
+            // Or better, use a callback if we are inside Router context, 
+            // but here we are likely deeper. 
+            // Ideally we should use useNavigate, but this component doesn't have it imported.
+            // We'll rely on the parent handler or simpler:
+            // Actually, parent passes 'onManage'. Let's update parent handler in Dashboard.jsx.
+            if (onManage) onManage();
+          }}
+          className="flex-1 bg-slate-900 text-white py-2.5 rounded-xl text-sm font-bold shadow hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
         >
-          <ShoppingBag size={16} />
-          {t.manageProducts}
-        </button>
-
-        <button
-          onClick={onManageStories}
-          disabled={!onManageStories}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold border border-slate-200 transition-colors
-            ${onManageStories ? 'text-pink-600 hover:bg-pink-50' : 'text-slate-300 cursor-not-allowed bg-slate-50'}`}
-        >
-          <CircleDashed size={14} />
-          {t.manageStories}
-        </button>
-      </div>
-
-      {/* Portfolio Button */}
-      <div className="mb-2">
-        <button
-          onClick={onManagePortfolio}
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold border border-slate-200 text-teal-600 hover:bg-teal-50 transition-colors"
-        >
-          <Briefcase size={16} />
-          {t.managePortfolio || "Portfolio"}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-4 gap-2">
-        <button
-          onClick={onShowAnalytics}
-          className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-          title={t.stats}
-        >
-          <BarChart3 size={16} />
-        </button>
-
-        <button
-          onClick={onShowLeads}
-          className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-          title={t.leads}
-        >
-          <Users size={16} />
-        </button>
-
-        <button
-          onClick={onShowQR}
-          className="text-white py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors opacity-90 hover:opacity-100"
-          style={{ backgroundColor: themeColor }}
-          title={t.code}
-        >
-          <QrCode size={16} />
+          <Settings size={16} />
+          {t.manageCard || "Manage Card"}
         </button>
 
         <button
           onClick={onPreview}
-          className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold border border-slate-200 text-blue-600 hover:bg-blue-50 transition-colors"
+          className="bg-slate-100 text-slate-600 p-2.5 rounded-xl hover:bg-slate-200 transition-colors"
           title={t.preview}
         >
-          <Eye size={16} />
+          <Eye size={20} />
         </button>
       </div>
-    </div>
+    </div >
   );
 }

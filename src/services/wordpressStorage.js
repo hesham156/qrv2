@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// ⚠️ Credentials provided by user. In production, proxy this through a backend.
+// ⚠️ Credentials now safely stored in .env
 const WP_API_URL = 'https://greenyellow-wombat-960712.hostingersite.com/wp-json/wp/v2';
-const WP_USERNAME = 'h456ad@gmail.com';
-const WP_PASSWORD = '0Z8W WwJF UZpR b7n8 fiZH S7cm';
+const WP_USERNAME = process.env.REACT_APP_WP_USERNAME;
+const WP_PASSWORD = process.env.REACT_APP_WP_PASSWORD;
 
 export const uploadToWordPress = async (file) => {
     try {
