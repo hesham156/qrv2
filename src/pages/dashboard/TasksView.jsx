@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ClipboardList,
@@ -14,10 +14,12 @@ import {
     Loader,
     Calendar,
     Trash2,
-    XCircle
+    XCircle,
+    Share2
 } from 'lucide-react';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
+import ShareModal from '../../components/dashboard/ShareModal';
 
 // Helper to get Status Color
 const getStatusColor = (status) => {
@@ -31,41 +33,29 @@ const getStatusColor = (status) => {
     }
 };
 
-const getStatusLabel = (status, t) => {
-    const map = {
-        new: t.statusNew || 'New',
-        data_received: t.statusData || 'Data Received',
-        design: t.statusDesign || 'In Design',
-        review: t.statusReview || 'In Review',
-        completed: t.statusDone || 'Completed'
-    };
-    return map[status] || status;
-}
-
 export default function TasksView({ employees, user, t, openTaskModal }) {
-
-    // Assuming 'loading', 'tasks', 'userLang', and 'onTaskClick' are defined elsewhere or passed as props.
-    // For the purpose of this edit, we'll define dummy values to ensure syntactical correctness.
-    const [loading, setLoading] = useState(false); // Dummy loading state
     // Filter employees to only show those that are 'hidden' (Project Cards) or have specific PM data
-    // Standard cards (visible on dashboard) should NOT appear here unless they have tasks.
-    // Based on user request: "Why when I added an employee card, it added it as a task?" -> imply separation.
-    const projectTasks = React.useMemo(() => {
+    const projectTasks = useMemo(() => {
         return employees.filter(emp => emp.hidden === true || emp.projectManagement);
     }, [employees]);
 
     const [tasks, setTasks] = useState(projectTasks);
-
-    // Sync tasks with filtered employees when employees prop changes
-    React.useEffect(() => {
+    // Sync locally when props change
+    useEffect(() => {
         setTasks(employees.filter(emp => emp.hidden === true || emp.projectManagement));
     }, [employees]);
-    const userLang = user?.language || 'en'; // Dummy userLang
-    const onTaskClick = openTaskModal; // Map openTaskModal to onTaskClick
+
+    const userLang = user?.language || 'en';
+    const onTaskClick = openTaskModal;
     const [toast, setToast] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [shareModal, setShareModal] = useState({ isOpen: false, task: null });
+
+    // Refs for columns to detecting drop areas
+    const columnRefs = useRef({});
 
     // Toast Logic
-    React.useEffect(() => {
+    useEffect(() => {
         if (toast) {
             const timer = setTimeout(() => setToast(null), 3000);
             return () => clearTimeout(timer);
@@ -82,13 +72,6 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
 
         try {
             await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'employees', task.id));
-            // Update local state is a bit tricky if tasks is derived from props. 
-            // Ideally we call a parent function, but here we update local state for immediate feedback.
-            // If tasks are passed as props (employees), this local filter might be overwritten on re-render, 
-            // but since firestore updates, the parent subscription should update eventually.
-            // However, we are declaring 'tasks' as local state initialized from props in this file (lines 48).
-            // Wait, looking at line 48: const [tasks, setTasks] = useState(employees);
-            // This suggests tasks is local state.
             setTasks(prev => prev.filter(t => t.id !== task.id));
             showToast(t.taskDeleted || "Task deleted");
         } catch (error) {
@@ -97,9 +80,82 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
         }
     };
 
+    const handleQuickAdd = async (status) => {
+        const title = window.prompt(t.enterTaskName || "Enter Task Name:");
+        if (!title) return;
+
+        try {
+            const newCard = {
+                name: title,
+                jobTitle: 'Project Task',
+                hidden: true, // It's a task card
+                createdAt: serverTimestamp(),
+                projectManagement: {
+                    status: status,
+                    stages: [
+                        { id: 'data', label: t.dataCollection || 'Data Collection', steps: [] },
+                        { id: 'design', label: t.designBuild || 'Design & Build', steps: [] },
+                        { id: 'review', label: t.finalReview || 'Final Review', steps: [] }
+                    ],
+                    estimatedHours: 0,
+                    notes: ''
+                }
+            };
+
+            // Optimistic add (optional, but let's wait for firestore for simplicity or push a temp one)
+            // Ideally we wait for real time update, but we can show a toast
+            await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'employees'), newCard);
+            showToast(t.taskCreated || "Task created!");
+        } catch (error) {
+            console.error("Error creating task:", error);
+            showToast(t.createError || "Failed to create task", "error");
+        }
+    };
+
+    const handleShareLink = (e, task) => {
+        e.stopPropagation();
+        setShareModal({ isOpen: true, task });
+    };
+
+    const handleDragEnd = async (task, info) => {
+        const { point } = info;
+
+        // Find which column the task was dropped in
+        const droppedColId = Object.keys(columnRefs.current).find(colId => {
+            const el = columnRefs.current[colId];
+            if (!el) return false;
+            const rect = el.getBoundingClientRect();
+            // Check if point is inside rect
+            return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
+        });
+
+        if (droppedColId && droppedColId !== task.projectManagement?.status) {
+            // 1. Optimistic Update
+            setTasks(prev => prev.map(t => {
+                if (t.id === task.id) {
+                    return { ...t, projectManagement: { ...t.projectManagement, status: droppedColId } };
+                }
+                return t;
+            }));
+
+            // 2. Update Firestore
+            try {
+                const taskRef = doc(db, 'artifacts', appId, 'users', user.uid, 'employees', task.id);
+                await updateDoc(taskRef, {
+                    'projectManagement.status': droppedColId
+                });
+                showToast(`${t.movedTo || 'Moved to'} ${getStatusLabel(droppedColId, t)}`);
+            } catch (error) {
+                console.error("Error moving task:", error);
+                showToast(t.moveError || "Failed to move task", "error");
+                // Revert optimistic update if needed (omitted for brevity)
+            }
+        }
+    };
+
     // Toast Component
     const Toast = () => (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-slate-900 text-white'}`}>
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-[60] animate-in slide-in-from-bottom-5 fade-in duration-300 ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-slate-900 text-white'}`}>
             {toast.type === 'error' ? <XCircle size={20} /> : <CheckCircle2 size={20} className="text-emerald-400" />}
             <span className="font-bold text-sm">{toast.message}</span>
         </div>
@@ -128,6 +184,18 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
         });
     };
 
+    // Status Label Helper
+    const getStatusLabel = (status, t) => {
+        const map = {
+            new: t.statusNew || 'New',
+            data_received: t.statusData || 'Data Received',
+            design: t.statusDesign || 'In Design',
+            review: t.statusReview || 'In Review',
+            completed: t.statusDone || 'Completed'
+        };
+        return map[status] || status;
+    }
+
     return (
         <div className="p-6 h-[calc(100vh-80px)] overflow-x-auto overflow-y-hidden">
             {toast && <Toast />}
@@ -135,128 +203,152 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
                 {COLUMNS.map(col => {
                     const colTasks = getColumnTasks(col.id);
                     return (
-                        <div key={col.id} className="flex-1 min-w-[280px] flex flex-col h-full rounded-2xl bg-slate-50 border border-slate-100/60">
+                        <div
+                            key={col.id}
+                            ref={el => columnRefs.current[col.id] = el}
+                            className="flex-1 min-w-[280px] flex flex-col h-full rounded-2xl bg-slate-50 border border-slate-100/60"
+                        >
                             {/* Column Header */}
-                            <div className="p-4 flex items-center justify-between sticky top-0 bg-slate-50 z-10 rounded-t-2xl">
+                            <div className="p-4 flex items-center justify-between sticky top-0 bg-slate-50 z-10 rounded-t-2xl group/col">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-8 h-8 rounded-lg ${col.bg} ${col.color} flex items-center justify-center`}>
                                         <col.icon size={18} />
                                     </div>
                                     <h3 className="font-bold text-slate-700">{col.title}</h3>
                                 </div>
-                                <span className="px-2.5 py-1 rounded-full bg-white text-slate-500 text-xs font-bold shadow-sm border border-slate-100">
-                                    {colTasks.length}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="px-2.5 py-1 rounded-full bg-white text-slate-500 text-xs font-bold shadow-sm border border-slate-100">
+                                        {colTasks.length}
+                                    </span>
+                                    {/* Quick Add Button Header */}
+                                    <button
+                                        onClick={() => handleQuickAdd(col.id)}
+                                        className="w-6 h-6 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 flex items-center justify-center transition-colors"
+                                        title={t.quickAdd || "Quick Add Task"}
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Column Body */}
-                            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-                                {colTasks.map(task => {
-                                    const totalSteps = task.projectManagement?.stages?.reduce((acc, s) => acc + s.steps.length, 0) || 0;
-                                    const completedSteps = task.projectManagement?.stages?.reduce((acc, s) => acc + s.steps.filter(st => st.checked).length, 0) || 0;
-                                    const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+                            <motion.div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar" layoutScroll>
+                                <AnimatePresence>
+                                    {colTasks.map(task => {
+                                        const totalSteps = task.projectManagement?.stages?.reduce((acc, s) => acc + s.steps.length, 0) || 0;
+                                        const completedSteps = task.projectManagement?.stages?.reduce((acc, s) => acc + s.steps.filter(st => st.checked).length, 0) || 0;
+                                        const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
-                                    return (
-                                        <motion.div
-                                            layoutId={task.id}
-                                            key={task.id}
-                                            whileHover={{ y: -4, scale: 1.02 }}
-                                            className="bg-white p-4 rounded-xl shadow-sm border border-slate-200/60 cursor-pointer group hover:shadow-md transition-all relative overflow-hidden"
-                                            onClick={() => onTaskClick(task)}
-                                        >
-                                            {/* Top Strip */}
-                                            <div className={`absolute top-0 left-0 w-full h-1 ${col.bg.replace('bg-', 'bg-gradient-to-r from-transparent via-')}`} />
+                                        return (
+                                            <motion.div
+                                                layout
+                                                layoutId={task.id}
+                                                key={task.id}
+                                                drag
+                                                dragSnapToOrigin
+                                                dragElastic={0.1}
+                                                onDragEnd={(e, info) => handleDragEnd(task, info)}
+                                                whileHover={{ y: -4, scale: 1.02, zIndex: 10, cursor: 'grab' }}
+                                                whileDrag={{ scale: 1.05, cursor: 'grabbing', zIndex: 100, rotate: 2 }}
+                                                className="bg-white p-4 rounded-xl shadow-sm border border-slate-200/60 group hover:shadow-md transition-shadow relative overflow-hidden"
+                                                onClick={() => onTaskClick(task)}
+                                            >
+                                                {/* Top Strip */}
+                                                <div className={`absolute top-0 left-0 w-full h-1 ${col.bg.replace('bg-', 'bg-gradient-to-r from-transparent via-')}`} />
 
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800 line-clamp-1">{task.name}</h4>
-                                                    <p className="text-xs text-slate-400 font-mono mt-0.5">{task.company || task.jobTitle}</p>
-                                                </div>
-                                                <button
-                                                    className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                                                    onClick={(e) => handleDeleteTask(e, task)}
-                                                    title={t.delete || "Delete"}
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-
-                                            {/* Progress Bar */}
-                                            {totalSteps > 0 && (
-                                                <div className="mb-3">
-                                                    <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">
-                                                        <span>Progress</span>
-                                                        <span>{progress}%</span>
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-800 line-clamp-1">{task.name}</h4>
+                                                        <p className="text-xs text-slate-400 font-mono mt-0.5">{task.company || task.jobTitle}</p>
                                                     </div>
-                                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                        <div
-                                                            className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-emerald-500' : 'bg-brand-500'}`}
-                                                            style={{ width: `${progress}%` }}
-                                                        />
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            className="text-slate-300 hover:text-brand-500 transition-colors p-1"
+                                                            onClick={(e) => handleShareLink(e, task)}
+                                                            title={t.shareTracking || "Share Tracking Link"}
+                                                            onPointerDown={(e) => e.stopPropagation()}
+                                                        >
+                                                            <Share2 size={16} />
+                                                        </button>
+                                                        <button
+                                                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                                            onClick={(e) => handleDeleteTask(e, task)}
+                                                            title={t.delete || "Delete"}
+                                                            onPointerDown={(e) => e.stopPropagation()}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
                                                     </div>
                                                 </div>
-                                            )}
 
-                                            {/* Footer Info */}
-                                            <div className="flex items-center gap-4 text-xs font-semibold text-slate-500 pt-2 border-t border-slate-50">
-                                                <div className="flex items-center gap-1.5 tooltip" title="Due Date">
-                                                    <Calendar size={12} className={task.projectManagement?.dueDate ? 'text-brand-500' : 'text-slate-300'} />
-                                                    <span>
-                                                        {task.projectManagement?.dueDate
-                                                            ? new Date(task.projectManagement.dueDate.seconds * 1000).toLocaleDateString()
-                                                            : '--/--'
-                                                        }
-                                                    </span>
-                                                </div>
-                                                {task.projectManagement?.estimatedHours > 0 && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Clock size={12} className="text-indigo-400" />
-                                                        <span>{task.projectManagement?.estimatedHours}h</span>
+                                                {/* Progress Bar */}
+                                                {totalSteps > 0 && (
+                                                    <div className="mb-3">
+                                                        <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">
+                                                            <span>Progress</span>
+                                                            <span>{progress}%</span>
+                                                        </div>
+                                                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-emerald-500' : 'bg-brand-500'}`}
+                                                                style={{ width: `${progress}%` }}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 )}
-                                            </div>
 
-                                            {/* Hover Action */}
-                                            <div className="absolute ltr:right-3 rtl:left-3 bottom-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 rtl:rotate-180">
-                                                    <ArrowRight size={12} />
+                                                {/* Footer Info */}
+                                                <div className="flex items-center gap-4 text-xs font-semibold text-slate-500 pt-2 border-t border-slate-50">
+                                                    <div className="flex items-center gap-1.5 tooltip" title="Due Date">
+                                                        <Calendar size={12} className={task.projectManagement?.dueDate ? 'text-brand-500' : 'text-slate-300'} />
+                                                        <span>
+                                                            {task.projectManagement?.dueDate
+                                                                ? new Date(task.projectManagement.dueDate.seconds * 1000).toLocaleDateString()
+                                                                : '--/--'
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                    {task.projectManagement?.estimatedHours > 0 && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Clock size={12} className="text-indigo-400" />
+                                                            <span>{task.projectManagement?.estimatedHours}h</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        </motion.div>
-                                    );
-                                })}
+                                            </motion.div>
+                                        );
+                                    })}
+                                </AnimatePresence>
 
                                 {colTasks.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center h-32 text-slate-300 border-2 border-dashed border-slate-100 rounded-xl m-2">
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className="flex flex-col items-center justify-center h-32 text-slate-300 border-2 border-dashed border-slate-100 rounded-xl m-2"
+                                    >
                                         <col.icon size={24} className="mb-2 opacity-50" />
                                         <span className="text-xs font-medium">{t.noTasks || 'No tasks'}</span>
-                                        <button className="mt-2 text-[10px] font-bold text-brand-500 bg-brand-50 px-3 py-1 rounded-full uppercase tracking-wide opacity-0 group-hover:opacity-100 transition-opacity hover:bg-brand-100">
+                                        <button
+                                            onClick={() => handleQuickAdd(col.id)}
+                                            className="mt-2 text-[10px] font-bold text-brand-500 bg-brand-50 px-3 py-1 rounded-full uppercase tracking-wide opacity-100 hover:bg-brand-100 transition-colors"
+                                        >
                                             + {t.newTask || 'Add'}
                                         </button>
-                                    </div>
+                                    </motion.div>
                                 )}
-                            </div>
+                            </motion.div>
                         </div>
                     );
                 })}
             </div>
+
+            <ShareModal
+                isOpen={shareModal.isOpen}
+                onClose={() => setShareModal({ isOpen: false, task: null })}
+                task={shareModal.task}
+                user={user}
+                t={t}
+            />
         </div>
     );
-}
-
-const calculateProgress = (pm) => {
-    if (!pm?.stages) return 0;
-    // Simple logic: % of checked steps across all stages
-    let total = 0;
-    let checked = 0;
-    pm.stages.forEach(stage => {
-        if (stage.steps) {
-            stage.steps.forEach(step => {
-                total++;
-                if (step.checked) checked++;
-            });
-        }
-    });
-    if (total === 0) return 0;
-    return Math.round((checked / total) * 100);
 }

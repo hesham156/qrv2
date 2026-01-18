@@ -22,6 +22,7 @@ const Features = lazy(() => import('./pages/landing/Features'));
 const Contact = lazy(() => import('./pages/landing/Contact'));
 const PaymentSuccess = lazy(() => import('./pages/payment/PaymentSuccess'));
 const NotFound = lazy(() => import('./pages/utility/NotFound'));
+const TrackerPage = lazy(() => import('./pages/tracker/TrackerPage'));
 
 
 
@@ -302,6 +303,9 @@ export default function App() {
                       />
                     </ProtectedRoute>
                   } />
+
+                  {/* Public Tracking Link */}
+                  <Route path="/tracker/:uid/:tid" element={<PageTransition><TrackerPage /></PageTransition>} />
 
                   {/* Profile Routes */}
                   <Route path="/p/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />

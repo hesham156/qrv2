@@ -11,6 +11,7 @@ import PortfolioManagerModal from '../../components/modals/PortfolioManagerModal
 import AnalyticsModal from '../../components/modals/AnalyticsModal';
 import LeadsListModal from '../../components/modals/LeadsListModal';
 import BrandedLoader from '../../components/ui/BrandedLoader';
+import SettingsModal from '../../components/modals/SettingsModal';
 
 // Lazy load specific heavy modals if needed, but for embedded dashboard we might want them eager or mostly eager
 // For now, importing eager is safer for layout consistency.
@@ -20,6 +21,7 @@ export default function SingleCardDashboard({ user, t, lang, onLogout, toggleLan
     const navigate = useNavigate();
     const [employee, setEmployee] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     useEffect(() => {
         if (!user || !cardId) return;
@@ -45,129 +47,140 @@ export default function SingleCardDashboard({ user, t, lang, onLogout, toggleLan
     if (!employee) return null;
 
     return (
-        <Routes>
-            <Route element={<SingleCardLayout
-                t={t}
-                lang={lang}
-                employee={employee}
-                user={user}
-                onLogout={onLogout}
-                toggleLang={toggleLang}
-            />}>
-                {/* Overview */}
-                <Route index element={
-                    <CardDetailsView
-                        employee={employee}
-                        t={t}
-                        lang={lang}
-                        onBack={() => navigate('/dashboard')}
-                        onAction={(actionId) => {
-                            if (actionId === 'edit') navigate('edit');
-                            else if (actionId === 'seo') navigate('seo');
-                            else if (actionId === 'products') navigate('products');
-                            else if (actionId === 'stories') navigate('stories');
-                            else if (actionId === 'portfolio') navigate('portfolio');
-                            else if (actionId === 'analytics') navigate('analytics');
-                            else if (actionId === 'leads') navigate('leads');
-                        }}
-                    />
-                } />
+        <>
+            <Routes>
+                <Route element={<SingleCardLayout
+                    t={t}
+                    lang={lang}
+                    employee={employee}
+                    user={user}
+                    onLogout={onLogout}
+                    toggleLang={toggleLang}
+                    onOpenSettings={() => setIsSettingsOpen(true)}
+                />}>
+                    {/* Overview */}
+                    <Route index element={
+                        <CardDetailsView
+                            employee={employee}
+                            t={t}
+                            lang={lang}
+                            onBack={() => navigate('/dashboard')}
+                            onAction={(actionId) => {
+                                if (actionId === 'edit') navigate('edit');
+                                else if (actionId === 'seo') navigate('seo');
+                                else if (actionId === 'products') navigate('products');
+                                else if (actionId === 'stories') navigate('stories');
+                                else if (actionId === 'portfolio') navigate('portfolio');
+                                else if (actionId === 'analytics') navigate('analytics');
+                                else if (actionId === 'leads') navigate('leads');
+                            }}
+                        />
+                    } />
 
-                {/* Edit (General/Contact/Design) */}
-                <Route path="edit" element={
-                    <EmployeeForm
-                        isEmbedded={true}
-                        initialTab="general"
-                        initialData={employee}
-                        userId={user.uid}
-                        user={user}
-                        t={t}
-                        onClose={() => navigate('..')}
-                    />
-                } />
+                    {/* Edit (General/Contact/Design) */}
+                    <Route path="edit" element={
+                        <EmployeeForm
+                            isEmbedded={true}
+                            initialTab="general"
+                            initialData={employee}
+                            userId={user.uid}
+                            user={user}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
 
-                {/* SEO */}
-                <Route path="seo" element={
-                    <EmployeeForm
-                        isEmbedded={true}
-                        initialTab="seo"
-                        initialData={employee}
-                        userId={user.uid}
-                        user={user}
-                        t={t}
-                        onClose={() => navigate('..')}
-                    />
-                } />
+                    {/* SEO */}
+                    <Route path="seo" element={
+                        <EmployeeForm
+                            isEmbedded={true}
+                            initialTab="seo"
+                            initialData={employee}
+                            userId={user.uid}
+                            user={user}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
 
-                {/* Booking */}
-                <Route path="booking" element={
-                    <EmployeeForm
-                        isEmbedded={true}
-                        initialTab="availability"
-                        initialData={employee}
-                        userId={user.uid}
-                        user={user}
-                        t={t}
-                        onClose={() => navigate('..')}
-                    />
-                } />
+                    {/* Booking */}
+                    <Route path="booking" element={
+                        <EmployeeForm
+                            isEmbedded={true}
+                            initialTab="availability"
+                            initialData={employee}
+                            userId={user.uid}
+                            user={user}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
 
-                {/* Products */}
-                <Route path="products" element={
-                    <ProductsManagerModal
-                        isEmbedded={true}
-                        employee={employee}
-                        userId={user.uid}
-                        user={user}
-                        t={t}
-                        onClose={() => navigate('..')}
-                    />
-                } />
+                    {/* Products */}
+                    <Route path="products" element={
+                        <ProductsManagerModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            user={user}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
 
-                {/* Stories */}
-                <Route path="stories" element={
-                    <StoriesManagerModal
-                        isEmbedded={true}
-                        employee={employee}
-                        userId={user.uid}
-                        t={t}
-                        onClose={() => navigate('..')}
-                    />
-                } />
+                    {/* Stories */}
+                    <Route path="stories" element={
+                        <StoriesManagerModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
 
-                {/* Portfolio */}
-                <Route path="portfolio" element={
-                    <PortfolioManagerModal
-                        isEmbedded={true}
-                        employee={employee}
-                        userId={user.uid}
-                        user={user}
-                        t={t}
-                        onClose={() => navigate('..')}
-                    />
-                } />
+                    {/* Portfolio */}
+                    <Route path="portfolio" element={
+                        <PortfolioManagerModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            user={user}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
 
-                {/* Analytics */}
-                <Route path="analytics" element={
-                    <AnalyticsModal
-                        isEmbedded={true}
-                        employee={employee}
-                        t={t}
-                        onClose={() => navigate('..')}
-                    />
-                } />
+                    {/* Analytics */}
+                    <Route path="analytics" element={
+                        <AnalyticsModal
+                            isEmbedded={true}
+                            employee={employee}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
 
-                {/* Leads */}
-                <Route path="leads" element={
-                    <LeadsListModal
-                        isEmbedded={true}
-                        employee={employee}
-                        userId={user.uid}
-                        t={t}
-                        onClose={() => navigate('..')}
-                    />
-                } />
-            </Route>
-        </Routes>
+                    {/* Leads */}
+                    <Route path="leads" element={
+                        <LeadsListModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
+                </Route>
+            </Routes>
+            {isSettingsOpen && (
+                <SettingsModal
+                    onClose={() => setIsSettingsOpen(false)}
+                    user={user}
+                    t={t}
+                    lang={lang}
+                />
+            )}
+        </>
     );
 }

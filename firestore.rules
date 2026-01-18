@@ -46,7 +46,9 @@ service cloud.firestore {
         // Write: Only Owner or Admin, OR public update for stats (followers count)
         allow create, delete: if isOwner(userId) || isAdmin(appId);
         allow update: if isOwner(userId) || isAdmin(appId) || 
-                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats']));
+                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats'])) ||
+                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['projectManagement']) && 
+                      request.resource.data.projectManagement.diff(resource.data.get('projectManagement', {})).affectedKeys().hasAny(['analytics', 'comments', 'history']));
 
         // 4. Products (Subcollection of Employee)
         match /products/{productId} {

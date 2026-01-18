@@ -7,14 +7,14 @@ import { optimizeTextWithAI } from "../../services/aiService";
 import { appId, db } from "../../config/firebase";
 import {
   Phone, Mail, Share2, Image as ImageIcon, Briefcase, Activity, Upload, Loader2, CreditCard, Type, Copy, Wand, Search,
-  Building2, Crown, LayoutTemplate, LinkIcon, Palette, User, X, Globe, ShieldCheck, Edit
+  Building2, Crown, LayoutTemplate, Link, Palette, User, X, Globe, ShieldCheck, Edit, CheckCircle, XCircle
 } from "lucide-react";
 import { translations } from "../../utils/translations";
 
 const Wrapper = ({ children, isEmbedded }) => {
   if (isEmbedded) {
     return (
-      <div className="bg-white rounded-2xl w-full border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col animate-in fade-in duration-500">
+      <div className="bg-white rounded-2xl w-full border border-slate-200 shadow-sm h-full flex flex-col animate-in fade-in duration-500">
         {children}
       </div>
     )
@@ -76,6 +76,18 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
   const [loading, setLoading] = useState(false);
   const [slugError, setSlugError] = useState('');
   const [domainError, setDomainError] = useState('');
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
 
   // Local UI state for input toggles
   const [nameLang, setNameLang] = useState('ar');
@@ -141,10 +153,10 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
         skills: parsed.skills || prev.skills
       }));
 
-      window.alert(t?.magicSuccess || "Magic! Data extracted from CV ✨");
+      showToast(t?.magicSuccess || "Magic! Data extracted from CV ✨");
     } catch (err) {
       console.error(err);
-      window.alert(t?.magicError || "Could not parse CV. Please fill manually.");
+      showToast(t?.magicError || "Could not parse CV. Please fill manually.", "error");
     } finally {
       setLoading(false);
     }
@@ -171,12 +183,10 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
       setLoading(false);
     }
   };
-
   const handleFontUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Check plan
     if (user?.plan !== 'pro') {
       window.alert(t.proFeature || "Pro Feature Required");
       return;
@@ -186,10 +196,27 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
     try {
       const url = await uploadToWordPress(file);
       setFormData(prev => ({ ...prev, customFont: url, googleFont: '' }));
-      window.alert(t.fontUploadSuccess || "Font uploaded successfully!");
+      showToast(t.fontUploadSuccess || "Font uploaded successfully!");
     } catch (err) {
       console.error(err);
-      window.alert(t.fontUploadError || "Failed to upload font.");
+      showToast(t.fontUploadError || "Failed to upload font.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenericFileUpload = async (e, field) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    try {
+      const url = await uploadToWordPress(file);
+      setFormData(prev => ({ ...prev, [field]: url }));
+      showToast(t.uploadSuccess || "File uploaded successfully!");
+    } catch (err) {
+      console.error(err);
+      showToast(t.uploadError || "Failed to upload file.", "error");
     } finally {
       setLoading(false);
     }
@@ -262,13 +289,17 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
 
 
 
-      onClose();
+      if (!isEmbedded) {
+        onClose();
+      } else {
+        showToast(t.saved || "Saved successfully!");
+      }
     } catch (error) {
       console.error("Error saving:", error);
       if (error.code === 'permission-denied') {
-        window.alert(t.permissionError || "Permission denied");
+        showToast(t.permissionError || "Permission denied", "error");
       } else {
-        window.alert(t.saveError || "Error saving");
+        showToast(t.saveError || "Error saving", "error");
       }
     } finally {
       setLoading(false);
@@ -329,7 +360,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
 
       {/* Header - Only for Modal */}
       {/* Header - Always Show */}
-      <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white z-10 shrink-0">
+      <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white z-10 shrink-0 rounded-t-2xl">
         <div className="flex items-center gap-3">
           <Edit size={20} className="text-indigo-600" />
           <h2 className="text-lg font-bold text-slate-800">{initialData ? currentTitle : t.createCard}</h2>
@@ -511,7 +542,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
 
               {/* Slug */}
               <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                <label className="block text-sm font-bold text-indigo-900 mb-1 flex items-center gap-2"><LinkIcon size={16} /> {t.slugLabel}</label>
+                <label className="block text-sm font-bold text-indigo-900 mb-1 flex items-center gap-2"><Link size={16} /> {t.slugLabel}</label>
                 <p className="text-xs text-indigo-600 mb-2">{t.slugHint}</p>
                 <div className="flex items-center bg-white border border-indigo-200 rounded-lg overflow-hidden group focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
                   <span className="bg-indigo-100/50 text-indigo-600 text-xs px-3 py-3.5 font-mono border-l border-indigo-100">/ #</span>
@@ -632,11 +663,23 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><ImageIcon size={16} /> {isCompany ? t.logoUrl : t.photoUrl}</label>
-                  <input type="url" dir="ltr" value={formData.photoUrl} onChange={e => setFormData({ ...formData, photoUrl: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm" placeholder="https://" />
+                  <div className="flex gap-2">
+                    <input type="url" dir="ltr" value={formData.photoUrl} onChange={e => setFormData({ ...formData, photoUrl: e.target.value })} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm" placeholder="https://" />
+                    <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 rounded-xl flex items-center justify-center transition-colors">
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleGenericFileUpload(e, 'photoUrl')} />
+                      <Upload size={18} />
+                    </label>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><LinkIcon size={16} /> {isCompany ? t.profilePdf : t.cvPdf}</label>
-                  <input type="url" dir="ltr" value={formData.cvUrl} onChange={e => setFormData({ ...formData, cvUrl: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm" placeholder="https://" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><Link size={16} /> {isCompany ? t.profilePdf : t.cvPdf}</label>
+                  <div className="flex gap-2">
+                    <input type="url" dir="ltr" value={formData.cvUrl} onChange={e => setFormData({ ...formData, cvUrl: e.target.value })} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm" placeholder="https://" />
+                    <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 rounded-xl flex items-center justify-center transition-colors">
+                      <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={(e) => handleGenericFileUpload(e, 'cvUrl')} />
+                      <Upload size={18} />
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -728,15 +771,26 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
                 </div>
               </div>
 
-              {/* Videos */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">{t.bgVideo}</label>
-                  <input type="url" dir="ltr" value={formData.bgVideoUrl} onChange={e => setFormData({ ...formData, bgVideoUrl: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none" placeholder="MP4 URL" />
+                  <label className="block text-xs font-bold text-slate-600 mb-1 uppercase flex items-center gap-1"><Upload size={10} /> {t.bgVideo}</label>
+                  <div className="flex gap-1">
+                    <input type="url" dir="ltr" value={formData.bgVideoUrl} onChange={e => setFormData({ ...formData, bgVideoUrl: e.target.value })} className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none" placeholder="MP4 URL" />
+                    <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 rounded-lg flex items-center justify-center transition-colors">
+                      <input type="file" className="hidden" accept="video/*" onChange={(e) => handleGenericFileUpload(e, 'bgVideoUrl')} />
+                      <Upload size={14} />
+                    </label>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">{t.profileVideo}</label>
-                  <input type="url" dir="ltr" value={formData.profileVideoUrl} onChange={e => setFormData({ ...formData, profileVideoUrl: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none" placeholder="MP4 URL" />
+                  <label className="block text-xs font-bold text-slate-600 mb-1 uppercase flex items-center gap-1"><Upload size={10} /> {t.profileVideo}</label>
+                  <div className="flex gap-1">
+                    <input type="url" dir="ltr" value={formData.profileVideoUrl} onChange={e => setFormData({ ...formData, profileVideoUrl: e.target.value })} className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none" placeholder="MP4 URL" />
+                    <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 rounded-lg flex items-center justify-center transition-colors">
+                      <input type="file" className="hidden" accept="video/*" onChange={(e) => handleGenericFileUpload(e, 'profileVideoUrl')} />
+                      <Upload size={14} />
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -788,19 +842,24 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
                   <p className="text-[10px] text-slate-400 mt-1 text-right">Recommended: 160 chars</p>
                 </div>
 
-                {/* SEO Image */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2">
-                    <ImageIcon size={16} /> Social Share Image (URL)
+                    <ImageIcon size={16} /> Social Share Image
                   </label>
-                  <input
-                    type="url"
-                    dir="ltr"
-                    value={formData.seoImage}
-                    onChange={e => setFormData({ ...formData, seoImage: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm"
-                    placeholder={formData.photoUrl || "https://..."}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      dir="ltr"
+                      value={formData.seoImage}
+                      onChange={e => setFormData({ ...formData, seoImage: e.target.value })}
+                      className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-sm"
+                      placeholder={formData.photoUrl || "https://..."}
+                    />
+                    <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 rounded-xl flex items-center justify-center transition-colors">
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleGenericFileUpload(e, 'seoImage')} />
+                      <Upload size={18} />
+                    </label>
+                  </div>
                   <p className="text-[10px] text-slate-400 mt-1">
                     Leave empty to use your profile photo automatically.
                   </p>
@@ -970,13 +1029,21 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
       </div>
 
       {/* Footer Actions */}
-      <div className="p-5 border-t border-slate-100 bg-white shrink-0 flex gap-3 z-10 sticky bottom-0 active:bottom-0">
+      <div className="p-5 border-t border-slate-100 bg-white shrink-0 flex gap-3 z-10 sticky bottom-0 rounded-b-2xl">
         <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors">{t.cancel}</button>
         <button form="empForm" type="submit" disabled={loading} className="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg transition-all hover:opacity-90 active:scale-[0.98]" style={{ backgroundColor: formData.themeColor }}>
           {loading ? t.saving : t.save}
         </button>
       </div>
 
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-[60] animate-in slide-in-from-bottom-5 fade-in duration-300 ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-slate-900 text-white'}`}>
+          {toast.type === 'error' ? <XCircle size={20} /> : <CheckCircle size={20} className="text-emerald-400" />}
+          <span className="font-bold text-sm">{toast.message}</span>
+        </div>
+      )}
 
     </Wrapper >
   );

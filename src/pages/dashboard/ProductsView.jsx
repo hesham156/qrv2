@@ -2,6 +2,8 @@ import React from 'react';
 import { ShoppingBag, Package, ArrowRight } from 'lucide-react';
 
 export default function ProductsView({ employees, onManageProducts, t }) {
+    const visibleEmployees = employees.filter(emp => !emp.hidden);
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -18,7 +20,7 @@ export default function ProductsView({ employees, onManageProducts, t }) {
             </div>
 
             {/* Cards Grid */}
-            {employees.length === 0 ? (
+            {visibleEmployees.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
                     <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Package size={32} />
@@ -28,7 +30,7 @@ export default function ProductsView({ employees, onManageProducts, t }) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {employees.map((emp) => (
+                    {visibleEmployees.map((emp) => (
                         <div key={emp.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
 
                             {/* Card Preview Header */}

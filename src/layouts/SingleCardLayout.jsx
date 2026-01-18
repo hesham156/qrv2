@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function SingleCardLayout({ t, lang, employee, user, onLogout, toggleLang }) {
+export default function SingleCardLayout({ t, lang, employee, user, onLogout, toggleLang, onOpenSettings }) {
     const { cardId } = useParams();
     const isRTL = lang === 'ar';
 
@@ -66,7 +66,10 @@ export default function SingleCardLayout({ t, lang, employee, user, onLogout, to
                     </button>
 
                     {/* User Profile */}
-                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100">
+                    <button
+                        onClick={onOpenSettings}
+                        className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
                         <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
                             {user?.photoURL ?
                                 <img src={user.photoURL} alt="User" className="w-full h-full rounded-full object-cover" />
@@ -76,7 +79,7 @@ export default function SingleCardLayout({ t, lang, employee, user, onLogout, to
                         <span className="text-sm font-medium text-slate-700 truncate max-w-[100px]">
                             {user?.displayName || 'User'}
                         </span>
-                    </div>
+                    </button>
 
                     {/* Logout */}
                     <button
