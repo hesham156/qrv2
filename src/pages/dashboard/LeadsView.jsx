@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, getDocs, limit, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
 import BookingModal from '../../components/modals/BookingModal';
-import { Download, Search, Filter, Phone, CheckCircle, XCircle, Clock, Briefcase, ArrowRight, Calendar, Trash2 } from 'lucide-react';
+import AddLeadModal from '../../components/modals/AddLeadModal';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { Download, Search, Filter, Phone, CheckCircle, XCircle, Clock, Briefcase, ArrowRight, Calendar, Trash2, Plus } from 'lucide-react';
 import { deleteDoc } from 'firebase/firestore';
 
 const STATUS_CONFIG = {
@@ -22,6 +24,13 @@ export default function LeadsView({ employees = [], user, t }) {
     // Toast State
     const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
 
+    // Add Lead Modal State
+    const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+
+    // Confirm Dialog State
+    const [dialog, setDialog] = useState({ isOpen: false, data: null, type: 'info', title: '', message: '', action: null });
+    const [actionLoading, setActionLoading] = useState(false);
+
     useEffect(() => {
         if (toast) {
             const timer = setTimeout(() => setToast(null), 3000);
@@ -36,7 +45,7 @@ export default function LeadsView({ employees = [], user, t }) {
     const handleStatusChange = async (lead, newStatus) => {
         // If status is changed to 'converted', trigger the project creation flow
         if (newStatus === 'converted' && lead.status !== 'converted') {
-            await convertToProject(lead);
+            openConvertDialog(lead);
             return;
         }
 
@@ -53,9 +62,51 @@ export default function LeadsView({ employees = [], user, t }) {
         }
     };
 
-    const convertToProject = async (lead) => {
-        if (!window.confirm(t.convertConfirm || `Create a new Project Card for "${lead.name}"?`)) return;
+    const openConvertDialog = (lead) => {
+        setDialog({
+            isOpen: true,
+            data: lead,
+            type: 'info',
+            title: t.convert || 'Convert to Project',
+            message: t.convertConfirm || `Create a new Project Card for "${lead.name}"?`,
+            action: 'convert',
+            confirmText: t.createCard || 'Create Project'
+        });
+    };
 
+    const openDeleteDialog = (lead) => {
+        setDialog({
+            isOpen: true,
+            data: lead,
+            type: 'danger',
+            title: t.delete || 'Delete',
+            message: t.deleteConfirm || "Are you sure you want to delete this lead?",
+            action: 'delete',
+            confirmText: t.delete || 'Delete'
+        });
+    };
+
+    const handleConfirmAction = async () => {
+        if (!dialog.data || !dialog.action) return;
+
+        setActionLoading(true);
+        const lead = dialog.data;
+
+        try {
+            if (dialog.action === 'convert') {
+                await executeConversion(lead);
+            } else if (dialog.action === 'delete') {
+                await executeDelete(lead);
+            }
+            setDialog({ ...dialog, isOpen: false });
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const executeConversion = async (lead) => {
         setConvertingId(lead.id);
         try {
             // 1. Create new Employee (Card)
@@ -81,10 +132,13 @@ export default function LeadsView({ employees = [], user, t }) {
 
             await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'employees'), newCardData);
 
-            // 2. Update Lead Status to Converted
-            await handleStatusChange(lead, 'converted');
+            // 2. Update Lead Status to Converted MANUALLY to avoid recursion
+            const leadRef = doc(db, 'artifacts', appId, 'users', user.uid, 'employees', lead.empId, 'leads', lead.id);
+            await updateDoc(leadRef, { status: 'converted' });
 
-            // alert("Project Card Created! You can now track it in the Tasks view.");
+            // Update local state directly
+            setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'converted' } : l));
+
             showToast(t.projectCreated || "Project created! Check Tasks view.");
         } catch (error) {
             console.error("Error converting lead:", error);
@@ -94,9 +148,7 @@ export default function LeadsView({ employees = [], user, t }) {
         }
     };
 
-    const handleDelete = async (lead) => {
-        if (!window.confirm(t.deleteConfirm || "Are you sure you want to delete this lead?")) return;
-
+    const executeDelete = async (lead) => {
         try {
             const leadRef = doc(db, 'artifacts', appId, 'users', lead.userId, 'employees', lead.empId, 'leads', lead.id);
             await deleteDoc(leadRef);
@@ -109,54 +161,57 @@ export default function LeadsView({ employees = [], user, t }) {
         }
     };
 
+    // Remove old functions that used window.confirm directly and route checks there
+    // handleStatusChange already routes to openConvertDialog
+    // Need to update handleDelete usage in jsx
+
+    const fetchAllLeads = async () => {
+        setLoading(true);
+        try {
+            const allLeads = [];
+            // Fetch leads for each employee
+            const promises = employees.map(async (emp) => {
+                // Ensure correct user ID (owner of the card)
+                const uid = user?.uid || emp.userId;
+                if (!uid) return;
+
+                const ref = collection(db, 'artifacts', appId, 'users', uid, 'employees', emp.id, 'leads');
+                // Order by new first
+                const q = query(ref, orderBy('createdAt', 'desc'), limit(100));
+                const snap = await getDocs(q);
+
+                snap.forEach(doc => {
+                    allLeads.push({
+                        id: doc.id,
+                        empId: emp.id, // The ID of the card this lead came from
+                        empName: emp.name,
+                        userId: uid, // Needed to update
+                        ...doc.data()
+                    });
+                });
+            });
+
+            await Promise.all(promises);
+            // Sort by last interaction (updatedAt) or creation date
+            allLeads.sort((a, b) => {
+                const timeA = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
+                const timeB = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
+                return timeB - timeA;
+            });
+            setLeads(allLeads);
+        } catch (e) {
+            console.error("Error fetching leads", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Fetch Leads Effect
     useEffect(() => {
         if (employees.length === 0) {
             setLoading(false);
             return;
         }
-
-        const fetchAllLeads = async () => {
-            setLoading(true);
-            try {
-                const allLeads = [];
-                // Fetch leads for each employee
-                const promises = employees.map(async (emp) => {
-                    // Ensure correct user ID (owner of the card)
-                    const uid = user?.uid || emp.userId;
-                    if (!uid) return;
-
-                    const ref = collection(db, 'artifacts', appId, 'users', uid, 'employees', emp.id, 'leads');
-                    // Order by new first
-                    const q = query(ref, orderBy('createdAt', 'desc'), limit(100));
-                    const snap = await getDocs(q);
-
-                    snap.forEach(doc => {
-                        allLeads.push({
-                            id: doc.id,
-                            empId: emp.id, // The ID of the card this lead came from
-                            empName: emp.name,
-                            userId: uid, // Needed to update
-                            ...doc.data()
-                        });
-                    });
-                });
-
-                await Promise.all(promises);
-                // Sort by last interaction (updatedAt) or creation date
-                allLeads.sort((a, b) => {
-                    const timeA = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
-                    const timeB = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
-                    return timeB - timeA;
-                });
-                setLeads(allLeads);
-            } catch (e) {
-                console.error("Error fetching leads", e);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchAllLeads();
     }, [employees, user]);
 
@@ -230,21 +285,54 @@ export default function LeadsView({ employees = [], user, t }) {
     return (
         <div className="p-6 max-w-7xl mx-auto">
             {toast && <Toast />}
-            {/* ... rest of JSX ... */}
+
+            <ConfirmDialog
+                isOpen={dialog.isOpen}
+                title={dialog.title}
+                message={dialog.message}
+                type={dialog.type}
+                confirmText={dialog.confirmText}
+                cancelText={t.cancel || 'Cancel'}
+                onConfirm={handleConfirmAction}
+                onCancel={() => setDialog({ ...dialog, isOpen: false })}
+                isLoading={actionLoading}
+            />
+
+            <AddLeadModal
+                isOpen={isAddLeadOpen}
+                onClose={() => setIsAddLeadOpen(false)}
+                employees={employees}
+                user={user}
+                t={t}
+                onSuccess={() => {
+                    showToast(t.leadAdded || "Client added successfully");
+                    fetchAllLeads(); // Refresh list
+                }}
+            />
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
 
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">{t.leadsManage || 'Leads Management'}</h1>
                     <p className="text-slate-500">{t.leadsDesc || 'Capture and manage potential client information'}</p>
                 </div>
-                <button
-                    onClick={downloadCSV}
-                    disabled={filteredLeads.length === 0}
-                    className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <Download size={18} />
-                    {t.exportCSV || 'Export CSV'}
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setIsAddLeadOpen(true)}
+                        className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg font-bold hover:bg-slate-800 transition-colors"
+                    >
+                        <Plus size={18} />
+                        {t.addClient || 'Add Client'}
+                    </button>
+                    <button
+                        onClick={downloadCSV}
+                        disabled={filteredLeads.length === 0}
+                        className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Download size={18} />
+                        {t.exportCSV || 'Export CSV'}
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -354,7 +442,7 @@ export default function LeadsView({ employees = [], user, t }) {
                                                 {/* Convert Button */}
                                                 {(lead.status !== 'converted') ? (
                                                     <button
-                                                        onClick={() => convertToProject(lead)}
+                                                        onClick={() => openConvertDialog(lead)}
                                                         disabled={convertingId === lead.id}
                                                         className="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all gap-1 shadow-sm"
                                                         title={t.convert || "Convert to Project"}
@@ -373,11 +461,9 @@ export default function LeadsView({ employees = [], user, t }) {
                                                     </span>
                                                 )}
 
-
-
                                                 {/* Delete Button */}
                                                 <button
-                                                    onClick={() => handleDelete(lead)}
+                                                    onClick={() => openDeleteDialog(lead)}
                                                     className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                                                     title={t.delete || "Delete"}
                                                 >

@@ -59,7 +59,7 @@ export const parseCVText = (text) => {
     // 3. Website / Links
     const linkedinMatch = text.match(/linkedin\.com\/in\/[\w-]+/i);
     const githubMatch = text.match(/github\.com\/[\w-]+/i);
-    const genericLink = text.match(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/);
+    const genericLink = text.match(/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/);
 
     if (linkedinMatch) result.website = `https://${linkedinMatch[0]}`;
     else if (githubMatch) result.website = `https://${githubMatch[0]}`;

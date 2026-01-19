@@ -9,6 +9,7 @@ import {
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
 import { uploadToWordPress } from '../../services/wordpressStorage';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 export default function TaskDetailsModal({ employee, onClose, t, userId }) {
     const STATUS_OPTIONS = [
@@ -118,13 +119,6 @@ export default function TaskDetailsModal({ employee, onClose, t, userId }) {
         setStages(newStages);
     };
 
-    const deleteStep = (stageIndex, stepIndex) => {
-        if (!window.confirm(t.deleteStepConfirm || "Delete this step?")) return;
-        const newStages = [...stages];
-        newStages[stageIndex].steps.splice(stepIndex, 1);
-        setStages(newStages);
-    };
-
     const handleAddComment = () => {
         if (!newComment.trim()) return;
         const comment = {
@@ -138,8 +132,45 @@ export default function TaskDetailsModal({ employee, onClose, t, userId }) {
         setNewComment('');
     };
 
+    const [dialog, setDialog] = useState({ isOpen: false, data: null, type: 'info', title: '', message: '', action: null });
+
+    const openDeleteStepDialog = (stageIndex, stepIndex) => {
+        setDialog({
+            isOpen: true,
+            data: { stageIndex, stepIndex },
+            type: 'danger',
+            title: t.deleteStep || 'Delete Step',
+            message: t.deleteStepConfirm || "Delete this step?",
+            action: 'delete_step',
+            confirmText: t.delete || 'Delete'
+        });
+    };
+
+    const handleConfirmAction = () => {
+        if (!dialog.data || !dialog.action) return;
+
+        if (dialog.action === 'delete_step') {
+            const { stageIndex, stepIndex } = dialog.data;
+            const newStages = [...stages];
+            newStages[stageIndex].steps.splice(stepIndex, 1);
+            setStages(newStages);
+        }
+
+        setDialog({ ...dialog, isOpen: false });
+    };
+
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <ConfirmDialog
+                isOpen={dialog.isOpen}
+                title={dialog.title}
+                message={dialog.message}
+                type={dialog.type}
+                confirmText={dialog.confirmText}
+                cancelText={t.cancel || 'Cancel'}
+                onConfirm={handleConfirmAction}
+                onCancel={() => setDialog({ ...dialog, isOpen: false })}
+            />
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -234,7 +265,7 @@ export default function TaskDetailsModal({ employee, onClose, t, userId }) {
                                                     <div key={step.id} className="flex items-center group">
                                                         <button onClick={() => toggleStep(sIdx, stepIdx)} className={`w-5 h-5 rounded border ltr:mr-3 rtl:ml-3 flex items-center justify-center ${step.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-300'}`}>{step.checked && <Check size={12} />}</button>
                                                         <span className={`text-sm flex-1 ${step.checked ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{step.label}</span>
-                                                        <button onClick={() => deleteStep(sIdx, stepIdx)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 p-1"><Trash2 size={14} /></button>
+                                                        <button onClick={() => openDeleteStepDialog(sIdx, stepIdx)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 p-1"><Trash2 size={14} /></button>
                                                     </div>
                                                 ))}
                                             </div>

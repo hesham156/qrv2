@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-    ArrowRight,
     Edit2,
     ShoppingBag,
     CircleDashed,
@@ -8,7 +7,6 @@ import {
     BarChart3,
     Users,
     QrCode,
-    Eye,
     ExternalLink,
     ChevronRight,
     ChevronLeft

@@ -20,6 +20,7 @@ import {
 import { doc, updateDoc, deleteDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
 import ShareModal from '../../components/dashboard/ShareModal';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 // Helper to get Status Color
 const getStatusColor = (status) => {
@@ -51,6 +52,10 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
     const [loading, setLoading] = useState(false);
     const [shareModal, setShareModal] = useState({ isOpen: false, task: null });
 
+    // Dialog State
+    const [dialog, setDialog] = useState({ isOpen: false, data: null, type: 'info', title: '', message: '', action: null });
+    const [actionLoading, setActionLoading] = useState(false);
+
     // Refs for columns to detecting drop areas
     const columnRefs = useRef({});
 
@@ -66,17 +71,37 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
         setToast({ message, type });
     };
 
-    const handleDeleteTask = async (e, task) => {
+    const confirmDeleteTask = (e, task) => {
         e.stopPropagation();
-        if (!window.confirm(t.deleteTaskConfirm || "Delete this task permanently?")) return;
+        setDialog({
+            isOpen: true,
+            data: task,
+            type: 'danger',
+            title: t.deleteTask || 'Delete Task',
+            message: t.deleteTaskConfirm || "Delete this task permanently?",
+            action: 'delete_task',
+            confirmText: t.delete || 'Delete'
+        });
+    };
+
+    const handleConfirmAction = async () => {
+        if (!dialog.data || !dialog.action) return;
+
+        setActionLoading(true);
+        const task = dialog.data;
 
         try {
-            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'employees', task.id));
-            setTasks(prev => prev.filter(t => t.id !== task.id));
-            showToast(t.taskDeleted || "Task deleted");
+            if (dialog.action === 'delete_task') {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'employees', task.id));
+                setTasks(prev => prev.filter(t => t.id !== task.id));
+                showToast(t.taskDeleted || "Task deleted");
+            }
+            setDialog({ ...dialog, isOpen: false });
         } catch (error) {
-            console.error("Error deleting", error);
-            showToast(t.deleteError || "Failed to delete", "error");
+            console.error("Error performing action:", error);
+            showToast(t.deleteError || "Action failed", "error");
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -199,6 +224,19 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
     return (
         <div className="p-6 h-[calc(100vh-80px)] overflow-x-auto overflow-y-hidden">
             {toast && <Toast />}
+
+            <ConfirmDialog
+                isOpen={dialog.isOpen}
+                title={dialog.title}
+                message={dialog.message}
+                type={dialog.type}
+                confirmText={dialog.confirmText}
+                cancelText={t.cancel || 'Cancel'}
+                onConfirm={handleConfirmAction}
+                onCancel={() => setDialog({ ...dialog, isOpen: false })}
+                isLoading={actionLoading}
+            />
+
             <div className="flex h-full gap-6 min-w-[1200px] rtl:flex-row-reverse" dir={userLang === 'ar' ? 'rtl' : 'ltr'}>
                 {COLUMNS.map(col => {
                     const colTasks = getColumnTasks(col.id);
@@ -272,7 +310,7 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
                                                         </button>
                                                         <button
                                                             className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                                                            onClick={(e) => handleDeleteTask(e, task)}
+                                                            onClick={(e) => confirmDeleteTask(e, task)}
                                                             title={t.delete || "Delete"}
                                                             onPointerDown={(e) => e.stopPropagation()}
                                                         >

@@ -549,7 +549,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
                   <input type="text" dir="ltr" value={formData.slug} onChange={e => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })} className="w-full px-3 py-2 text-sm outline-none font-mono text-indigo-700 placeholder-indigo-300" placeholder="your-name" />
                 </div>
                 {slugError && <p className="text-xs text-red-500 mt-2 font-bold flex items-center gap-1"><X size={12} />{slugError}</p>}
-                {slugError && <p className="text-xs text-red-500 mt-2 font-bold flex items-center gap-1"><X size={12} />{slugError}</p>}
+
               </div>
 
               {/* Custom Domain (PRO) */}
