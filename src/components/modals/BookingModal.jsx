@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
 import { appId, db } from "../../config/firebase";
 import { sendBookingNotification } from "../../services/emailService";
-import { Calendar as CalendarIcon, Clock, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { Calendar as CalendarIcon, X, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function BookingModal({ adminId, employeeId, themeColor, onClose, t, bookingSettings, initialValues }) {
     const [name, setName] = useState(initialValues?.name || '');

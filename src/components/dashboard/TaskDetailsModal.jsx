@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import {
-    X, Check, Calendar, Clock, AlertCircle, CheckCircle2,
-    ChevronRight, Save, Trash2, Plus,
-    LayoutList, MoreVertical, Globe, Lock, Eye, MessageSquare, History, Settings2,
+    X, Check, Calendar, Clock, AlertCircle, CheckCircle2, Save, Trash2, Plus,
+    LayoutList, MoreVertical, Globe, Lock, Settings2,
     Palette, Video, Bell, Image, FileText, Upload, Loader2 as Loader
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';

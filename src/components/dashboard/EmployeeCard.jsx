@@ -8,8 +8,6 @@ import {
   MousePointer2,
   Eye,
   Settings,
-  MoreVertical,
-  QrCode,
   Share2
 } from 'lucide-react';
 
@@ -17,13 +15,7 @@ export default function EmployeeCard({
   employee,
   onDelete,
   onEdit,
-  onShowQR,
-  onShowAnalytics,
-  onShowLeads,
   onPreview,
-  onManageProducts,
-  onManageStories,
-  onManagePortfolio,
   onManage,
   t,
   lang

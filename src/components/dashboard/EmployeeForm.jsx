@@ -6,7 +6,7 @@ import { extractTextFromPDF, parseCVWithAI } from "../../services/cvParser";
 import { optimizeTextWithAI } from "../../services/aiService";
 import { appId, db } from "../../config/firebase";
 import {
-  Phone, Mail, Share2, Image as ImageIcon, Briefcase, Activity, Upload, Loader2, CreditCard, Type, Copy, Wand, Search,
+  Phone, Mail, Share2, Image as ImageIcon, Briefcase, Activity, Upload, Type, Wand, Search,
   Building2, Crown, LayoutTemplate, Link, Palette, User, X, Globe, ShieldCheck, Edit, CheckCircle, XCircle
 } from "lucide-react";
 import { translations } from "../../utils/translations";
