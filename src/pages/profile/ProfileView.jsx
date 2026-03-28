@@ -905,12 +905,12 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
 
 
 
-  const handleFollowClick = () => {
+  const handleFollowClick = useCallback(() => {
     if (isFollowing) return;
     setFollowModalOpen(true);
-  };
+  }, [isFollowing]);
 
-  const handleUnfollowClick = async () => {
+  const handleUnfollowClick = useCallback(async () => {
     if (!isFollowing) return;
     setIsFollowing(false);
     localStorage.removeItem(`followed_${profileData.id}`);
@@ -928,7 +928,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
       const empRef = doc(db, 'artifacts', appId, 'users', profileData.adminId, 'employees', profileData.id);
       await setDoc(empRef, { stats: { followers: increment(-1) } }, { merge: true });
     } catch (e) {}
-  };
+  }, [isFollowing, profileData?.id, profileData?.adminId, trackClick]);
 
   const handleSmartFollowSuccess = () => {
     setIsFollowing(true);
