@@ -501,6 +501,7 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
       } catch (e) { }
     };
 
+    fetchEmployee();
     fetchPaymentConfig();
 
     return () => { cancelled = true; };
@@ -861,7 +862,6 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
     } else {
       // Simulate Redirect
       const prodName = toText(selectedProductForPayment?.name);
-      const price = selectedProductForPayment?.price || '0';
 
       if (method === 'stripe') {
         // In a real app, you would call your backend here with paymentConfig.stripe.publishableKey
@@ -1107,7 +1107,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         </button>
       </motion.div>
     </div>
-  ), [data?.profileVideoUrl, data?.photoUrl, nameText, themeColor, tpl, toText, stories.length]);
+  ), [data?.profileVideoUrl, data?.photoUrl, nameText, tpl, toText, stories.length]);
 
   const ActionButton = ({ icon, label, onClick, href, className = "", targetBlank = false, highlight = false }) => {
     const Wrapper = href ? motion.a : motion.button;
@@ -1318,7 +1318,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
 
       </motion.div>
     </motion.div>
-  ), [nameText, jobTitleText, companyText, data, themeColor, t, trackClick, btnBase, palette.glow, downloadVCard, template, toText, containerVariants, itemVariants, reviews, showAllReviews, setShowAllReviews, L, handleFollowClick, handleUnfollowClick, isFollowing]);
+  ), [data, themeColor, t, trackClick, btnBase, toText, containerVariants, itemVariants, reviews, showAllReviews, setShowAllReviews, L, handleFollowClick, handleUnfollowClick, isFollowing]);
 
   /* --- PRODUCTS TAB VIEW (Dark) --- */
   const ProductsTabView = useMemo(() => (

@@ -1,10 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ClipboardList,
     CheckCircle2,
     Clock,
-    AlertCircle,
     Plus,
     FileText,
     Palette,

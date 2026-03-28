@@ -4,19 +4,13 @@ import { db, appId } from '../../config/firebase';
 import BookingModal from '../../components/modals/BookingModal';
 import AddLeadModal from '../../components/modals/AddLeadModal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { Download, Search, Filter, Phone, CheckCircle, XCircle, Clock, Briefcase, ArrowRight, Calendar, Trash2, Plus } from 'lucide-react';
+import { Download, Search, Filter, Phone, CheckCircle, XCircle, Clock, Briefcase, Calendar, Trash2, Plus } from 'lucide-react';
 import { deleteDoc } from 'firebase/firestore';
 
-const STATUS_CONFIG = {
-    new: { label: 'New', color: 'bg-slate-100 text-slate-600', icon: Clock },
-    follow_up: { label: 'Follow Up', color: 'bg-amber-50 text-amber-600', icon: Clock },
-    converted: { label: 'Converted', color: 'bg-emerald-50 text-emerald-600', icon: CheckCircle },
-    rejected: { label: 'Rejected', color: 'bg-red-50 text-red-600', icon: XCircle },
-};
 
 export default function LeadsView({ employees = [], user, t }) {
     const [leads, setLeads] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const [selectedEmpId, setSelectedEmpId] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [convertingId, setConvertingId] = useState(null);
@@ -213,6 +207,7 @@ export default function LeadsView({ employees = [], user, t }) {
             return;
         }
         fetchAllLeads();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [employees, user]);
 
     // Filtered Leads Memo
