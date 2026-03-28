@@ -15,6 +15,7 @@ import AnalyticsView from './AnalyticsView'; // Heavy
 import LeadsView from './LeadsView'; // Heavy
 import ProductsView from './ProductsView';
 import TasksView from './TasksView';
+import AppsView from './AppsView'; // New View
 import TaskDetailsModal from '../../components/dashboard/TaskDetailsModal';
 import OnboardingWizard from '../../components/onboarding/OnboardingWizard';
 import { updateDoc } from 'firebase/firestore';
@@ -62,7 +63,7 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
   const [employees, setEmployees] = useState([])
   const [permissionError, setPermissionError] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [currentView, setCurrentView] = useState('cards'); // 'cards', 'analytics', 'leads', 'products', 'card_details'
+  const [currentView, setCurrentView] = useState('cards'); // 'cards', 'analytics', 'leads', 'products', 'card_details', 'apps'
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -399,6 +400,10 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
 
       {currentView === 'admin' && (
         <PageTransition><AdminView t={t} /></PageTransition>
+      )}
+
+      {currentView === 'apps' && (
+        <PageTransition><AppsView t={t} /></PageTransition>
       )}
 
       {isFormOpen && (

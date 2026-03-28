@@ -222,7 +222,7 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
     }
 
     return (
-        <div className="p-6 h-[calc(100vh-80px)] overflow-x-auto overflow-y-hidden">
+        <div className="p-6 h-[calc(100vh-80px)] overflow-x-auto overflow-y-auto">
             {toast && <Toast />}
 
             <ConfirmDialog
@@ -244,7 +244,7 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
                         <div
                             key={col.id}
                             ref={el => columnRefs.current[col.id] = el}
-                            className="flex-1 min-w-[280px] flex flex-col h-full rounded-2xl bg-slate-50 border border-slate-100/60"
+                            className="flex-1 min-w-[280px] flex flex-col h-auto min-h-full rounded-2xl bg-slate-50 border border-slate-100/60"
                         >
                             {/* Column Header */}
                             <div className="p-4 flex items-center justify-between sticky top-0 bg-slate-50 z-10 rounded-t-2xl group/col">
@@ -269,8 +269,8 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
                                 </div>
                             </div>
 
-                            {/* Column Body */}
-                            <motion.div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar" layoutScroll>
+                            {/* Column Body - Removed overflow-y-auto to allow full height growth */}
+                            <motion.div className="flex-1 p-3 space-y-3" layoutScroll>
                                 <AnimatePresence>
                                     {colTasks.map(task => {
                                         const totalSteps = task.projectManagement?.stages?.reduce((acc, s) => acc + s.steps.length, 0) || 0;

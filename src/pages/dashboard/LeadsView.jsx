@@ -170,7 +170,7 @@ export default function LeadsView({ employees = [], user, t }) {
         try {
             const allLeads = [];
             // Fetch leads for each employee
-            const promises = employees.map(async (emp) => {
+            const promises = employees.filter(e => !e.hidden).map(async (emp) => {
                 // Ensure correct user ID (owner of the card)
                 const uid = user?.uid || emp.userId;
                 if (!uid) return;
@@ -356,7 +356,7 @@ export default function LeadsView({ employees = [], user, t }) {
                             onChange={(e) => setSelectedEmpId(e.target.value)}
                         >
                             <option value="all">{t.allCards || 'All Cards'}</option>
-                            {employees.map(emp => (
+                            {employees.filter(e => !e.hidden).map(emp => (
                                 <option key={emp.id} value={emp.id}>{emp.name || 'Untitled Card'}</option>
                             ))}
                         </select>

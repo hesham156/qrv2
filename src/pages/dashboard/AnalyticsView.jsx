@@ -164,7 +164,7 @@ export default function AnalyticsView({ employees = [], user }) {
                 daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange));
 
                 // We will execute a query for each employee. optimize later.
-                const promises = employees.map(async (emp) => {
+                const promises = employees.filter(e => !e.hidden).map(async (emp) => {
                     // Ensure we have a valid userId. Fallback to emp.userId if user prop is missing (rare)
                     const uid = user?.uid || emp.userId;
                     if (!uid) return;
@@ -211,7 +211,7 @@ export default function AnalyticsView({ employees = [], user }) {
                         onChange={(e) => setSelectedEmpId(e.target.value)}
                     >
                         <option value="all">All Cards</option>
-                        {employees.map(emp => (
+                        {employees.filter(e => !e.hidden).map(emp => (
                             <option key={emp.id} value={emp.id}>{emp.name || 'Untitled Card'}</option>
                         ))}
                     </select>

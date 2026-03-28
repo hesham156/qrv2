@@ -9,7 +9,8 @@ import {
     X,
     LayoutDashboard,
     Shield,
-    ClipboardList
+    ClipboardList,
+    Grid // Used for Apps
 } from 'lucide-react';
 
 export default function Sidebar({
@@ -30,6 +31,7 @@ export default function Sidebar({
         { id: 'leads', label: t.leads || 'Leads', icon: Users },
         { id: 'tasks', label: t.tasks || 'Tasks', icon: ClipboardList },
         { id: 'products', label: t.productsTitle || 'Products', icon: ShoppingBag },
+        { id: 'apps', label: t.apps || 'Apps & Integrations', icon: Grid },
     ];
 
     if (user?.role === 'super_admin') {

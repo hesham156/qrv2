@@ -10,6 +10,11 @@ import StoriesManagerModal from '../../components/modals/StoriesManagerModal';
 import PortfolioManagerModal from '../../components/modals/PortfolioManagerModal';
 import AnalyticsModal from '../../components/modals/AnalyticsModal';
 import LeadsListModal from '../../components/modals/LeadsListModal';
+import FollowersListModal from '../../components/modals/FollowersListModal';
+import ReviewsListModal from '../../components/modals/ReviewsListModal';
+import BookingsListModal from '../../components/modals/BookingsListModal';
+import StoryAnalyticsModal from '../../components/modals/StoryAnalyticsModal';
+import QRCodeManagerModal from '../../components/modals/QRCodeManagerModal';
 import BrandedLoader from '../../components/ui/BrandedLoader';
 import SettingsModal from '../../components/modals/SettingsModal';
 
@@ -73,15 +78,33 @@ export default function SingleCardDashboard({ user, t, lang, onLogout, toggleLan
                                 else if (actionId === 'portfolio') navigate('portfolio');
                                 else if (actionId === 'analytics') navigate('analytics');
                                 else if (actionId === 'leads') navigate('leads');
+                                else if (actionId === 'followers') navigate('followers');
+                                else if (actionId === 'reviews') navigate('reviews');
+                                else if (actionId === 'qr') navigate('qr');
+                                else if (actionId === 'appointments') navigate('appointments');
+                                else if (actionId === 'storyanalytics') navigate('story-analytics');
                             }}
                         />
                     } />
 
-                    {/* Edit (General/Contact/Design) */}
+                    {/* Edit (General/Contact) */}
                     <Route path="edit" element={
                         <EmployeeForm
                             isEmbedded={true}
                             initialTab="general"
+                            initialData={employee}
+                            userId={user.uid}
+                            user={user}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
+
+                    {/* Design & Identity */}
+                    <Route path="design" element={
+                        <EmployeeForm
+                            isEmbedded={true}
+                            initialTab="design"
                             initialData={employee}
                             userId={user.uid}
                             user={user}
@@ -164,6 +187,61 @@ export default function SingleCardDashboard({ user, t, lang, onLogout, toggleLan
                     {/* Leads */}
                     <Route path="leads" element={
                         <LeadsListModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
+
+                    {/* Followers */}
+                    <Route path="followers" element={
+                        <FollowersListModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
+
+                    {/* Reviews */}
+                    <Route path="reviews" element={
+                        <ReviewsListModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
+
+                    {/* QR Code */}
+                    <Route path="qr" element={
+                        <QRCodeManagerModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
+
+                    {/* Appointments */}
+                    <Route path="appointments" element={
+                        <BookingsListModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
+
+                    {/* Story Analytics */}
+                    <Route path="story-analytics" element={
+                        <StoryAnalyticsModal
                             isEmbedded={true}
                             employee={employee}
                             userId={user.uid}

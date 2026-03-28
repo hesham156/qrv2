@@ -313,7 +313,9 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
     { id: 'elegant', name: t.elegant },
     { id: 'professional', name: t.professional },
     { id: 'minimal', name: t.minimal },
-    { id: 'modern_pro', name: t.modernv2 || "Modern Pro (New)" }, // New Template
+    { id: 'modern_pro', name: t.modernv2 || "Modern Pro (New)" },
+    { id: 'portfolio', name: t.portfolio || "بورتفوليو 🖥️" },
+    { id: 'employee_card', name: t.employeeCard || "Employee Card 🪪" },
   ];
 
   const isCompany = formData.profileType === 'company';
@@ -328,9 +330,10 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
     { id: 'tracking', label: t.tabTracking || 'Tracking', icon: Activity },
   ].filter(tab => {
     if (isEmbedded) {
-      // If we are in 'Edit Data' mode (General), hide SEO and Booking (availability) tabs because they are in the sidebar
+      // If we are in 'Edit Data' mode (General), hide SEO, Booking and Design tabs because they are in the sidebar
       if (initialTab !== 'seo' && tab.id === 'seo') return false;
       if (initialTab !== 'availability' && tab.id === 'availability') return false;
+      if (initialTab !== 'design' && tab.id === 'design') return false;
 
       // If we are IN 'SEO' mode, we usually only want to see SEO.
       // But actually, if we are in SEO mode, we probably don't want ANY tabs, just the content.
@@ -347,6 +350,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
     if (activeTab === 'seo') return t.seoSettings || 'SEO Settings';
     if (activeTab === 'tracking') return t.tabTracking || 'Tracking';
     if (activeTab === 'availability') return t.bookingAvailability || 'Booking';
+    if (activeTab === 'design') return t.tabDesign || 'Design & Identity';
     return t.editData || 'Edit Data';
   };
 
@@ -373,7 +377,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
       </div>
 
       {/* Tabs */}
-      {!(isEmbedded && (initialTab === 'seo' || activeTab === 'seo' || initialTab === 'availability' || activeTab === 'availability')) && (
+      {!(isEmbedded && (initialTab === 'seo' || activeTab === 'seo' || initialTab === 'availability' || activeTab === 'availability' || initialTab === 'design' || activeTab === 'design')) && (
         <div className="flex bg-slate-50 border-b border-slate-200 overflow-x-auto hide-scrollbar shrink-0">
           {tabs.map((tab) => {
             const Icon = tab.icon;

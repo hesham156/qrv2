@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
-import { X, Save, Building, CreditCard, Check } from 'lucide-react';
+import { X, Save, Building, CreditCard, Check, Calendar, Wallet, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { connectGoogleCalendar } from '../../services/googleAuthService';
 
 export default function SettingsModal({ onClose, user, t, lang }) {
     const [companyName, setCompanyName] = useState('');
@@ -10,6 +11,10 @@ export default function SettingsModal({ onClose, user, t, lang }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [isGoogleLinked, setIsGoogleLinked] = useState(false);
+    const [linkingGoogle, setLinkingGoogle] = useState(false);
+    const [showAppleWallet, setShowAppleWallet] = useState(true);
+    const [showGoogleWallet, setShowGoogleWallet] = useState(true);
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -23,6 +28,9 @@ export default function SettingsModal({ onClose, user, t, lang }) {
                     // Map plan ID to readable name if needed, or just display ID for now
                     // In RegisterView we saw: free, pro, enterprise
                     setPlan(data.plan || 'free');
+                    setIsGoogleLinked(!!data.googleCredentials?.refreshToken);
+                    setShowAppleWallet(data.showAppleWallet !== false);
+                    setShowGoogleWallet(data.showGoogleWallet !== false);
                 }
             } catch (error) {
                 console.error("Error fetching user settings:", error);
@@ -33,13 +41,29 @@ export default function SettingsModal({ onClose, user, t, lang }) {
         fetchUserData();
     }, [user]);
 
+    const handleConnectGoogle = async () => {
+        setLinkingGoogle(true);
+        try {
+            await connectGoogleCalendar();
+            setIsGoogleLinked(true);
+            alert("Google Calendar connected successfully!");
+        } catch (error) {
+            console.error("Connection failed:", error);
+            alert("Failed to connect Google Calendar. Ensure you approved the permissions.");
+        } finally {
+            setLinkingGoogle(false);
+        }
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
             const docRef = doc(db, 'artifacts', appId, 'users', user.uid);
             await setDoc(docRef, {
-                companyName: companyName
+                companyName: companyName,
+                showAppleWallet,
+                showGoogleWallet
             }, { merge: true });
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
@@ -114,6 +138,90 @@ export default function SettingsModal({ onClose, user, t, lang }) {
                                 <p className="text-xs text-slate-400 mt-2">
                                     {t.companyNameHint || 'This will be displayed on your invoices and reports.'}
                                 </p>
+                            </div>
+
+                            {/* Wallet Buttons Visibility Section */}
+                            <div className="pt-4 border-t border-slate-100">
+                                <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                    <Wallet size={16} className="text-purple-500" />
+                                    {t.walletButtons || 'أزرار المحفظة'}
+                                </label>
+
+                                <div className="space-y-2">
+                                    {/* Apple Wallet Toggle */}
+                                    <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between border border-slate-100">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center shadow-sm">
+                                                <Wallet size={18} className="text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-800">Apple Wallet</p>
+                                                <p className="text-[10px] text-slate-500">{t.showOnProfile || 'إظهار على الملف الشخصي'}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAppleWallet(v => !v)}
+                                            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${showAppleWallet ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                                        >
+                                            <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${showAppleWallet ? 'translate-x-6' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
+
+                                    {/* Google Wallet Toggle */}
+                                    <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between border border-slate-100">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-200">
+                                                <CreditCard size={18} className="text-blue-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-800">Google Wallet</p>
+                                                <p className="text-[10px] text-slate-500">{t.showOnProfile || 'إظهار على الملف الشخصي'}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowGoogleWallet(v => !v)}
+                                            className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${showGoogleWallet ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                                        >
+                                            <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${showGoogleWallet ? 'translate-x-6' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Integrations Section */}
+                            <div className="pt-4 border-t border-slate-100">
+                                <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                    <Calendar size={16} className="text-indigo-500" />
+                                    {t.integrations || 'Integrations'}
+                                </label>
+
+                                <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                                            <svg viewBox="0 0 24 24" className="w-6 h-6">
+                                                <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.92 3.24-2.12 4.44-1.2 1.2-3.08 2.44-5.72 2.44-4.44 0-8.04-3.6-8.04-8.04s3.6-8.04 8.04-8.04c2.44 0 4.2.96 5.52 2.2l2.32-2.32C18.24 2.8 15.64 1.2 12.48 1.2 6.64 1.2 1.88 5.96 1.88 11.8s4.76 10.6 10.6 10.6c3.16 0 5.52-1.04 7.36-2.96 1.92-1.88 2.52-4.52 2.52-6.76 0-.64-.04-1.24-.12-1.76h-9.76z" fill="#4285F4" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800">Google Calendar</p>
+                                            <p className="text-[10px] text-slate-500">Enable Google Meet for bookings</p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleConnectGoogle}
+                                        disabled={isGoogleLinked || linkingGoogle}
+                                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${isGoogleLinked
+                                            ? 'bg-green-50 text-green-600 cursor-default'
+                                            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md active:scale-95'
+                                            }`}
+                                    >
+                                        {linkingGoogle ? t.loading : (isGoogleLinked ? 'Connected' : 'Connect')}
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Dev Only: Promote to Admin */}

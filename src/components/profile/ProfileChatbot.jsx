@@ -3,7 +3,7 @@ import { MessageSquare, Send, X, Bot, User, Sparkles } from 'lucide-react';
 import { chatWithProfileAI } from '../../services/aiService';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function ProfileChatbot({ profileData, themeColor, t }) {
+export default function ProfileChatbot({ profileData, themeColor, t, bottomOffset }) {
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [chatHistory, setChatHistory] = useState([]);
@@ -57,14 +57,14 @@ export default function ProfileChatbot({ profileData, themeColor, t }) {
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-[60]">
+        <div className={`fixed z-[70] transition-all duration-300 right-4 md:right-6 ${bottomOffset ? 'bottom-20 md:bottom-6' : 'bottom-6'}`}>
             <AnimatePresence>
                 {isOpen ? (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.8, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[350px] sm:w-[400px] flex flex-col overflow-hidden mb-4"
+                        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[calc(100vw-2rem)] sm:w-[380px] flex flex-col overflow-hidden mb-4"
                     >
                         {/* Header */}
                         <div className="p-4 flex items-center justify-between border-b" style={{ backgroundColor: themeColor }}>
@@ -73,10 +73,10 @@ export default function ProfileChatbot({ profileData, themeColor, t }) {
                                     <Bot size={20} />
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-sm">Ask AI about {profileData.name || 'Profile'}</h4>
-                                    <div className="flex items-center gap-1 text-[10px] text-white/80">
+                                    <h4 className="font-bold text-sm" dir="auto">{t?.chatTitle || `Ask AI about ${profileData.name || 'Profile'}`}</h4>
+                                    <div className="flex items-center gap-1 text-[10px] text-white/80" dir="auto">
                                         <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                                        Online & Helpful
+                                        {t?.onlineStatus || 'Online & Helpful'}
                                     </div>
                                 </div>
                             </div>
@@ -92,8 +92,8 @@ export default function ProfileChatbot({ profileData, themeColor, t }) {
                                     <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-3">
                                         <Sparkles size={24} />
                                     </div>
-                                    <p className="text-sm text-slate-600 font-medium">Hello! How can I help you today?</p>
-                                    <p className="text-xs text-slate-400 mt-1">You can ask about my skills, projects, or how to contact me.</p>
+                                    <p className="text-sm text-slate-600 font-medium" dir="auto">{t?.chatGreeting || 'Hello! How can I help you today?'}</p>
+                                    <p className="text-xs text-slate-400 mt-1" dir="auto">{t?.chatHint || 'You can ask about my skills, projects, or how to contact me.'}</p>
                                 </div>
                             )}
 
@@ -102,7 +102,7 @@ export default function ProfileChatbot({ profileData, themeColor, t }) {
                                     <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.role === 'user'
                                         ? 'bg-slate-900 text-white rounded-tr-none'
                                         : 'bg-white text-slate-700 shadow-sm border border-slate-100 rounded-tl-none'
-                                        }`}>
+                                        }`} dir="auto">
                                         {msg.parts[0].text}
                                     </div>
                                 </div>
@@ -126,8 +126,9 @@ export default function ProfileChatbot({ profileData, themeColor, t }) {
                                     type="text"
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
-                                    placeholder="Type your question..."
+                                    placeholder={t?.chatPlaceholder || "Type your question..."}
                                     className="flex-1 bg-slate-100 border-none rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                    dir="auto"
                                 />
                                 <button
                                     type="submit"
@@ -153,8 +154,8 @@ export default function ProfileChatbot({ profileData, themeColor, t }) {
             >
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
                 <MessageSquare size={24} />
-                <div className="absolute right-full mr-3 bg-slate-900 text-white text-[10px] py-1 px-2 rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity font-bold">
-                    Talk to my AI 🪄
+                <div className="absolute right-full mr-3 bg-slate-900 text-white text-[10px] py-1 px-2 rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity font-bold" dir="auto">
+                    {t?.chatTooltip || 'Talk to my AI 🪄'}
                 </div>
             </motion.button>
         </div>

@@ -97,9 +97,37 @@ service cloud.firestore {
                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stats']));
         }
 
+        // Reviews (public card ratings/comments)
+        match /reviews/{reviewId} {
+          // Public Create: Visitors can submit reviews (basic validation)
+          allow create: if request.resource.data.stars is int
+                        && request.resource.data.stars >= 1
+                        && request.resource.data.stars <= 5;
+          // Read: Public (to display on profile)
+          allow read: if true;
+          // Manage: Only Owner or Admin
+          allow update, delete: if isOwner(userId) || isAdmin(appId);
+          allow create: if isOwner(userId) || isAdmin(appId);
+        }
+
+        // Story Interactions (Analytics & Replies)
+        match /story_interactions/{interactionId} {
+          allow create: if true; // Public visitors can react or reply
+          // Owner or Admin can view/manage
+          allow read, update, delete: if isOwner(userId) || isAdmin(appId);
+        }
+
         match /payment_settings/{docId} {
           // Public Read is restricted.
           allow read, write: if isOwner(userId) || isAdmin(appId);
+        }
+
+        // Stories (Instagram-like stories on the profile)
+        match /stories/{storyId} {
+          // Public Read: Visitors can view stories
+          allow read: if true;
+          // Write: Only Owner or Admin
+          allow create, update, delete: if isOwner(userId) || isAdmin(appId);
         }
       }
 

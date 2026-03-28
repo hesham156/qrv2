@@ -10,6 +10,8 @@ import {
     BarChart3,
     Users,
     CalendarCheck,
+    CalendarClock,
+    MessageSquare,
     ArrowLeft,
     ChevronLeft,
     ChevronRight,
@@ -17,7 +19,11 @@ import {
     Eye,
     LogOut,
     Languages,
-    UserCircle
+    UserCircle,
+    Palette,
+    UserCheck,
+    Star,
+    QrCode
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -28,13 +34,19 @@ export default function SingleCardLayout({ t, lang, employee, user, onLogout, to
     const menuItems = [
         { id: 'overview', label: t.overview || 'Overview', icon: LayoutDashboard, path: `/dashboard/card/${cardId}` },
         { id: 'edit', label: t.editData || 'Edit Details', icon: Edit, path: `/dashboard/card/${cardId}/edit` },
+        { id: 'design', label: t.tabDesign || 'Design & Identity', icon: Palette, path: `/dashboard/card/${cardId}/design` },
+        { id: 'qr', label: t.code || 'QR Code', icon: QrCode, path: `/dashboard/card/${cardId}/qr` },
         { id: 'seo', label: 'SEO Settings', icon: Search, path: `/dashboard/card/${cardId}/seo` },
         { id: 'booking', label: t.bookingAvailability || 'Booking', icon: CalendarCheck, path: `/dashboard/card/${cardId}/booking` },
         { id: 'products', label: t.manageProducts || 'Products', icon: ShoppingBag, path: `/dashboard/card/${cardId}/products` },
         { id: 'stories', label: t.manageStories || 'Stories', icon: CircleDashed, path: `/dashboard/card/${cardId}/stories` },
         { id: 'portfolio', label: t.managePortfolio || 'Portfolio', icon: Briefcase, path: `/dashboard/card/${cardId}/portfolio` },
         { id: 'analytics', label: t.stats || 'Analytics', icon: BarChart3, path: `/dashboard/card/${cardId}/analytics` },
+        { id: 'storyanalytics', label: t.storyAnalytics || (isRTL ? 'إحصائيات القصص' : 'Story Analytics'), icon: MessageSquare, path: `/dashboard/card/${cardId}/story-analytics` },
+        { id: 'followers', label: t.followers || (isRTL ? 'المتابعين' : 'Followers'), icon: UserCheck, path: `/dashboard/card/${cardId}/followers` },
+        { id: 'reviews', label: t.reviews || (isRTL ? 'التقييمات' : 'Reviews'), icon: Star, path: `/dashboard/card/${cardId}/reviews` },
         { id: 'leads', label: t.leads || 'Leads', icon: Users, path: `/dashboard/card/${cardId}/leads` },
+        { id: 'appointments', label: t.appointments || (isRTL ? 'حجوزات العملاء' : 'Appointments'), icon: CalendarClock, path: `/dashboard/card/${cardId}/appointments` },
     ];
 
     return (

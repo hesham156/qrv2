@@ -6,7 +6,7 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 /**
  * Common AI Model configuration
  */
-export const getAIModel = (modelName = "gemini-1.5-flash") => {
+export const getAIModel = (modelName = "gemini-2.0-flash") => {
     return genAI.getGenerativeModel({ model: modelName });
 };
 
@@ -78,62 +78,41 @@ export const optimizeTextWithAI = async (currentText, type, lang = 'en') => {
  * @returns {Promise<string>}
  */
 export const chatWithProfileAI = async (message, profileContext, history = []) => {
-    // Try newer model first, fallback to stable if needed
-    const modelsToTry = ["gemini-1.5-flash", "gemini-pro"];
-    let lastError = null;
+    const modelName = "gemini-2.0-flash";
 
-    for (const modelName of modelsToTry) {
-        try {
-            const name = profileContext?.name || 'this professional';
-            const job = profileContext?.jobTitle || 'Expert';
-            const bio = profileContext?.bio || '';
-            const skillsSnippet = profileContext?.skills?.length > 0 ? profileContext.skills.join(", ") : 'Experience in various fields';
-            const productsSnippet = profileContext?.products?.length > 0 ? profileContext.products.map(p => p.name || p.title).join(", ") : 'various services';
+    const name = profileContext?.name || 'this professional';
+    const job = profileContext?.jobTitle || 'Expert';
+    const bio = profileContext?.bio || '';
+    const skillsSnippet = profileContext?.skills?.length > 0 ? profileContext.skills.join(", ") : 'Experience in various fields';
+    const productsSnippet = profileContext?.products?.length > 0 ? profileContext.products.map(p => p.name || p.title).join(", ") : 'various services';
 
-            const systemPrompt = `
-                You are a helpful AI assistant for a digital card profile.
-                Owner Name: ${name}
-                Job Title: ${job}
-                Bio: ${bio}
-                Skills: ${skillsSnippet}
-                Offerings/Projects: ${productsSnippet}
-                
-                Respond as a professional assistant. Be polite and concise.
-                Use the same language as the visitor (Arabic or English).
-            `;
+    const systemPrompt = `
+        You are a helpful AI assistant for a digital card profile.
+        Owner Name: ${name}
+        Job Title: ${job}
+        Bio: ${bio}
+        Skills: ${skillsSnippet}
+        Offerings/Projects: ${productsSnippet}
+        
+        Respond as a professional assistant. Be polite and concise.
+        Use the same language as the visitor (Arabic or English).
+    `;
 
-            const model = genAI.getGenerativeModel({
-                model: modelName,
-                // Note: systemInstruction might only work on 1.5+ models
-                ...(modelName.includes("1.5") ? { systemInstruction: systemPrompt } : {})
-            });
+    const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemPrompt,
+    });
 
-            const chat = model.startChat({
-                history: history,
-                generationConfig: {
-                    maxOutputTokens: 500,
-                },
-            });
+    const chat = model.startChat({
+        history: history,
+        generationConfig: {
+            maxOutputTokens: 500,
+        },
+    });
 
-            // If it's gemini-pro (v1), we might need to prepend the system prompt if history is empty
-            const finalMessage = (!modelName.includes("1.5") && history.length === 0)
-                ? `${systemPrompt}\n\nVisitor: ${message}`
-                : message;
-
-            const result = await chat.sendMessage(finalMessage);
-            const response = await result.response;
-            return response.text();
-        } catch (error) {
-            console.warn(`Failed to use model ${modelName}:`, error.message);
-            lastError = error;
-            // If it's not a 404 or model not found, don't bother trying the next model
-            if (!error.message?.includes("404") && !error.message?.includes("not found")) {
-                break;
-            }
-        }
-    }
-
-    throw lastError || new Error("All AI models failed to respond");
+    const result = await chat.sendMessage(message);
+    const response = await result.response;
+    return response.text();
 };
 
 /**
@@ -154,7 +133,7 @@ export const generateLocalizedGreeting = async (country, ownerName, lang = 'en')
             Example: "Welcome from Egypt! It's an honor to have you here."
         `;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const result = await model.generateContent(prompt);
         const response = await result.response;
         return response.text().trim();

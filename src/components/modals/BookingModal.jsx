@@ -97,19 +97,23 @@ export default function BookingModal({ adminId, employeeId, themeColor, onClose,
 
         setLoading(true);
         try {
-            // 0. Initialize Zoom Link (Try to generate)
-            let zoomLink = '';
-            let zoomPassword = '';
+            // 0. Initialize Meeting Link (Google Meet)
+            let meetingLink = '';
             try {
-                // Combine date and time for Zoom (YYYY-MM-DDTHH:mm:ss)
+                // Combine date and time for Google Meet (YYYY-MM-DDTHH:mm:ss)
                 const startTime = `${date}T${selectedTime}:00`;
-                const { createZoomMeeting } = await import('../../services/zoomService');
-                const meeting = await createZoomMeeting(`Meeting with ${name}`, startTime);
-                zoomLink = meeting.joinUrl;
-                zoomPassword = meeting.password;
-            } catch (zoomError) {
-                console.warn("Zoom creation failed:", zoomError);
-                // Proceed without Zoom link, or show a toast
+                const { createGoogleMeeting } = await import('../../services/googleMeetingService');
+                const meeting = await createGoogleMeeting({
+                    topic: `Meeting with ${name}`,
+                    startTime,
+                    duration: 45,
+                    name,
+                    phone
+                });
+                meetingLink = meeting.joinUrl;
+            } catch (meetError) {
+                console.warn("Google Meet creation failed:", meetError);
+                // Proceed without link, or show a toast
             }
 
             // 1. Check for existing Lead (by Phone) to prevent duplicates
@@ -124,8 +128,7 @@ export default function BookingModal({ adminId, employeeId, themeColor, onClose,
                 type: 'booking',
                 bookingDate: date,
                 bookingTime: selectedTime,
-                zoomLink,
-                zoomPassword,
+                meetingLink,
                 updatedAt: serverTimestamp() // Important for sorting
             };
 
@@ -174,14 +177,13 @@ export default function BookingModal({ adminId, employeeId, themeColor, onClose,
                 phone,
                 date,
                 time: selectedTime,
-                zoomLink // Pass to email
+                meetingLink // Pass to email
             }).catch(err => console.error("Email failed:", err));
 
             setSubmitted({
                 date,
                 time: selectedTime,
-                zoomLink,
-                zoomPassword
+                meetingLink
             });
             // Removed auto-close timeout to let user see details
             // setTimeout(onClose, 2500);
@@ -220,23 +222,26 @@ export default function BookingModal({ adminId, employeeId, themeColor, onClose,
                                 </div>
                             </div>
 
-                            {submitted.zoomLink && (
+                            {submitted.meetingLink && (
                                 <div className="flex items-start gap-3">
                                     <div className="p-2 bg-blue-50 rounded-lg text-blue-600 shrink-0">
-                                        <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center text-[8px] text-white font-bold">Z</div>
+                                        <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center text-[8px] text-white font-bold">G</div>
                                     </div>
                                     <div className="overflow-hidden">
-                                        <p className="text-xs text-slate-400 font-bold uppercase mb-1">Zoom Meeting</p>
-                                        <a
-                                            href={submitted.zoomLink}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-sm font-bold text-blue-600 underline truncate block hover:text-blue-800"
-                                        >
-                                            {t.joinMeeting || "Join Meeting Link"}
-                                        </a>
-                                        {submitted.zoomPassword && (
-                                            <p className="text-[10px] text-slate-500 mt-1">Passcode: <span className="font-mono bg-slate-200 px-1 rounded">{submitted.zoomPassword}</span></p>
+                                        <p className="text-xs text-slate-400 font-bold uppercase mb-1">Google Meet</p>
+                                        {submitted.meetingLink.startsWith('http') ? (
+                                            <a
+                                                href={submitted.meetingLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm font-bold text-blue-600 underline truncate block hover:text-blue-800"
+                                            >
+                                                {t.joinMeeting || "Join Google Meet"}
+                                            </a>
+                                        ) : (
+                                            <p className="text-sm font-bold text-slate-700">
+                                                {submitted.meetingLink}
+                                            </p>
                                         )}
                                     </div>
                                 </div>

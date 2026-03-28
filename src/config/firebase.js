@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // Diagnostic check for environment variables
 if (!process.env.REACT_APP_FIREBASE_API_KEY) {
@@ -17,8 +18,12 @@ const firebaseConfig = {
   measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const appId = 'default-app-id'; // أو القيمة القادمة من البيئة
+export const storage = getStorage(app);
+export const appId = firebaseConfig.appId;
 export const initialAuthToken = null;
+

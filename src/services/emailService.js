@@ -1,9 +1,6 @@
 import emailjs from '@emailjs/browser';
 
-// These should be in your .env file
-// REACT_APP_EMAILJS_SERVICE_ID
-// REACT_APP_EMAILJS_TEMPLATE_ID
-// REACT_APP_EMAILJS_PUBLIC_KEY
+
 
 export const initEmailService = () => {
     emailjs.init({
@@ -31,7 +28,7 @@ export const sendBookingNotification = async (bookingData) => {
                 from_phone: bookingData.phone,
                 booking_date: bookingData.date,
                 booking_time: bookingData.time,
-                message: `New booking received for ${bookingData.date} at ${bookingData.time}. From: ${bookingData.name} (${bookingData.phone}).${bookingData.zoomLink ? `\n\nZoom Meeting: ${bookingData.zoomLink}` : ''}`,
+                message: `New booking received for ${bookingData.date} at ${bookingData.time}. From: ${bookingData.name} (${bookingData.phone}).${bookingData.meetingLink ? `\n\nGoogle Meet: ${bookingData.meetingLink}` : ''}`,
             },
             publicKey
         );
@@ -43,5 +40,4 @@ export const sendBookingNotification = async (bookingData) => {
     }
 };
 
-// sendOtpEmail removed
 

@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "DigiCard Companion",
+    "version": "1.0.0",
+    "description": "Smart companion for your Digital Business Card system. Capture leads and manage tasks.",
+    "permissions": [
+        "activeTab",
+        "storage",
+        "scripting",
+        "sidePanel"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "background": {
+        "service_worker": "background.js"
+    }
+}

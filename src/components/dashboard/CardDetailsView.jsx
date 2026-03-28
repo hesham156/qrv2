@@ -6,10 +6,14 @@ import {
     Briefcase,
     BarChart3,
     Users,
+    MessageSquare,
+    CalendarClock,
     QrCode,
     ExternalLink,
     ChevronRight,
-    ChevronLeft
+    ChevronLeft,
+    UserCheck,
+    Star
 } from 'lucide-react';
 
 export default function CardDetailsView({ employee, onBack, t, lang, onAction }) {
@@ -63,6 +67,38 @@ export default function CardDetailsView({ employee, onBack, t, lang, onAction })
             icon: Users,
             color: 'text-green-600',
             bg: 'bg-green-50'
+        },
+        {
+            id: 'appointments',
+            label: t.appointments || 'Appointments',
+            desc: t.appointmentsDesc || 'View client bookings and meetings.',
+            icon: CalendarClock,
+            color: 'text-rose-600',
+            bg: 'bg-rose-50'
+        },
+        {
+            id: 'storyanalytics',
+            label: t.storyAnalytics || 'Story Messages',
+            desc: t.storyAnalyticsDesc || 'View messages and interactions with stories.',
+            icon: MessageSquare,
+            color: 'text-amber-600',
+            bg: 'bg-amber-50'
+        },
+        {
+            id: 'followers',
+            label: t.followers || 'Followers',
+            desc: t.followersDesc || (isRTL ? 'إدارة المتابعين وإرسال الرسائل' : 'Manage your profile followers.'),
+            icon: UserCheck,
+            color: 'text-indigo-600',
+            bg: 'bg-indigo-50'
+        },
+        {
+            id: 'reviews',
+            label: t.reviews || 'Reviews',
+            desc: t.reviewsDesc || (isRTL ? 'مراجعة آراء العملاء وتقييماتهم' : 'View and manage customer reviews.'),
+            icon: Star,
+            color: 'text-yellow-600',
+            bg: 'bg-yellow-50'
         },
         {
             id: 'qr',
