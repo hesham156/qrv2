@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Chrome, ExternalLink, Info } from 'lucide-react';
+import { Download, Chrome, Info } from 'lucide-react';
 
 export default function AppsView({ t }) {
     return (
@@ -84,7 +84,7 @@ export default function AppsView({ t }) {
                         <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-900 font-black flex items-center justify-center">2</div>
                         <h4 className="font-bold text-slate-800">Open Extensions</h4>
                         <p className="text-sm text-slate-500 leading-relaxed">
-                            In Chrome/Edge, go to <b>Extensions > Manage Extensions</b> through the menu, or type <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">chrome://extensions</code> in the address bar.
+                            In Chrome/Edge, go to <b>Extensions &gt; Manage Extensions</b> through the menu, or type <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">chrome://extensions</code> in the address bar.
                         </p>
                     </div>
 

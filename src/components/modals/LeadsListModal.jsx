@@ -1,7 +1,7 @@
 import { collection, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { appId, db } from "../../config/firebase";
-import { Phone, X, Download, Users } from "lucide-react";
+import { Phone, X, Download } from "lucide-react";
 
 export default function LeadsListModal({ userId, employee, onClose, t, isEmbedded }) {
   const [leads, setLeads] = useState([]);

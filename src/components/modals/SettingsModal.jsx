@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
-import { X, Save, Building, CreditCard, Check, Calendar, Wallet, Eye, EyeOff } from 'lucide-react';
+import { X, Save, Building, CreditCard, Check, Calendar, Wallet } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { connectGoogleCalendar } from '../../services/googleAuthService';
 

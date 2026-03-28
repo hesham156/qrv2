@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, X, Bot, User, Sparkles } from 'lucide-react';
+import { MessageSquare, Send, X, Bot, Sparkles } from 'lucide-react';
 import { chatWithProfileAI } from '../../services/aiService';
 import { motion, AnimatePresence } from 'framer-motion';
 

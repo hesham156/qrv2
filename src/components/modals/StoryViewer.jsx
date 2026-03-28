@@ -76,6 +76,7 @@ export default function StoryViewer({ stories, adminId, employeeId, onClose, pro
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, currentStory]);
 
   const handleNext = () => {
@@ -260,7 +261,7 @@ export default function StoryViewer({ stories, adminId, employeeId, onClose, pro
                     className="bg-white/95 backdrop-blur-md rounded-2xl p-3 flex items-center gap-3 cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-lg mx-auto max-w-sm"
                   >
                     {product.imageUrl && (
-                      <img src={product.imageUrl} className="w-12 h-12 rounded-xl object-cover" />
+                      <img src={product.imageUrl} alt={product.name} className="w-12 h-12 rounded-xl object-cover" />
                     )}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-extrabold text-slate-800 text-sm truncate">{product.name}</h3>

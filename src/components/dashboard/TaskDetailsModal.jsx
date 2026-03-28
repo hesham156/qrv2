@@ -44,7 +44,7 @@ export default function TaskDetailsModal({ employee, onClose, t, userId }) {
             ? new Date(employee.projectManagement.estimatedDelivery.seconds * 1000).toISOString().substr(0, 10)
             : ''
     );
-    const [history, setHistory] = useState(employee?.projectManagement?.history || []);
+    const [history] = useState(employee?.projectManagement?.history || []);
     const [loading, setLoading] = useState(false);
 
     // Advanced Branding & Content

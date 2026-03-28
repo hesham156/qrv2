@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    User, Building2, ArrowRight, ArrowLeft, Check, Sparkles,
+    User, Building2, ArrowRight, ArrowLeft, Sparkles,
     Phone, Briefcase, Palette, Wand2, Star, Rocket
 } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';

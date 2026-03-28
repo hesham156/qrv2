@@ -5,12 +5,10 @@ import {
     CheckCircle2,
     Clock,
     AlertCircle,
-    MoreHorizontal,
     Plus,
     FileText,
     Palette,
     Eye,
-    ArrowRight,
     Loader,
     Calendar,
     Trash2,
@@ -21,18 +19,6 @@ import { doc, updateDoc, deleteDoc, addDoc, collection, serverTimestamp } from '
 import { db, appId } from '../../config/firebase';
 import ShareModal from '../../components/dashboard/ShareModal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-
-// Helper to get Status Color
-const getStatusColor = (status) => {
-    switch (status) {
-        case 'new': return 'bg-slate-100 text-slate-600 border-slate-200';
-        case 'data_received': return 'bg-blue-50 text-blue-600 border-blue-200';
-        case 'design': return 'bg-purple-50 text-purple-600 border-purple-200';
-        case 'review': return 'bg-amber-50 text-amber-600 border-amber-200';
-        case 'completed': return 'bg-emerald-50 text-emerald-600 border-emerald-200';
-        default: return 'bg-slate-100 text-slate-600';
-    }
-};
 
 export default function TasksView({ employees, user, t, openTaskModal }) {
     // Filter employees to only show those that are 'hidden' (Project Cards) or have specific PM data
@@ -49,7 +35,7 @@ export default function TasksView({ employees, user, t, openTaskModal }) {
     const userLang = user?.language || 'en';
     const onTaskClick = openTaskModal;
     const [toast, setToast] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [loading] = useState(false);
     const [shareModal, setShareModal] = useState({ isOpen: false, task: null });
 
     // Dialog State

@@ -346,7 +346,6 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
   );
 
   const totalViews = data?.stats?.views || 0;
-  const totalScans = data?.stats?.scans || 0;
 
   // ---------- Fetch Employee (fast) + Analytics (background) ----------
   useEffect(() => {
@@ -502,10 +501,10 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
       } catch (e) { }
     };
 
-    fetchEmployee();
     fetchPaymentConfig();
 
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileData?.adminId, profileData?.id]);
 
   // ---------- Tracking Scripts Injection ----------
@@ -864,8 +863,6 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
       const prodName = toText(selectedProductForPayment?.name);
       const price = selectedProductForPayment?.price || '0';
 
-      let logMsg = `Mock Redirect to ${method.toUpperCase()} for ${prodName} - Price: ${price}`;
-
       if (method === 'stripe') {
         // In a real app, you would call your backend here with paymentConfig.stripe.publishableKey
         alert(`Redirecting to Stripe Checkout...\nProduct: ${prodName}\n(Using Key: ${paymentConfig.stripe.publishableKey})`);
@@ -1071,7 +1068,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         </button>
       </div>
     </div>
-  ), [data?.bgVideoUrl, t, toggleLang, L, themeColor, toText, data?.isVerified, tpl]);
+  ), [data?.bgVideoUrl, t, toggleLang, L, toText, data?.isVerified, tpl]);
 
   /* --- AVATAR VIEW (Modern Squircle) --- */
   const AvatarView = useMemo(() => (
@@ -1110,7 +1107,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         </button>
       </motion.div>
     </div>
-  ), [data?.profileVideoUrl, data?.photoUrl, nameText, themeColor, tpl, toText]);
+  ), [data?.profileVideoUrl, data?.photoUrl, nameText, themeColor, tpl, toText, stories.length]);
 
   const ActionButton = ({ icon, label, onClick, href, className = "", targetBlank = false, highlight = false }) => {
     const Wrapper = href ? motion.a : motion.button;
@@ -1321,7 +1318,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
 
       </motion.div>
     </motion.div>
-  ), [nameText, jobTitleText, companyText, data, themeColor, t, trackClick, btnBase, palette.glow, downloadVCard, template, toText, containerVariants, itemVariants, reviews, showAllReviews, setShowAllReviews]);
+  ), [nameText, jobTitleText, companyText, data, themeColor, t, trackClick, btnBase, palette.glow, downloadVCard, template, toText, containerVariants, itemVariants, reviews, showAllReviews, setShowAllReviews, L, handleFollowClick, handleUnfollowClick, isFollowing]);
 
   /* --- PRODUCTS TAB VIEW (Dark) --- */
   const ProductsTabView = useMemo(() => (
@@ -1378,7 +1375,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         </div>
       )}
     </motion.div>
-  ), [products, t, themeColor, palette.glow, btnBase, handleBuyProduct, toText]);
+  ), [products, t, themeColor, palette.glow, btnBase, handleBuyProduct, toText, containerVariants, itemVariants]);
 
   /* --- PORTFOLIO TAB VIEW (Dark) --- */
   const PortfolioTabView = useMemo(() => {
@@ -1397,6 +1394,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
 
     const getEmbedUrl = (url) => {
       if (!url) return null;
+      // eslint-disable-next-line no-useless-escape
       const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
       if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
       const vimeoMatch = url.match(/(?:vimeo\.com\/)(\d+)/);
@@ -1572,7 +1570,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         )}
       </motion.div>
     );
-  }, [portfolio, portfolioCategory, t, themeColor, palette.glow, btnBase, trackClick, toText]);
+  }, [portfolio, portfolioCategory, t, themeColor, palette.glow, btnBase, trackClick, toText, L, containerVariants, itemVariants, profileData.adminId, profileData.id]);
 
 
 

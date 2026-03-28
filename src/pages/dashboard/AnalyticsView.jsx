@@ -14,7 +14,7 @@ import {
     Cell,
     Legend
 } from 'recharts';
-import { ArrowUpRight, MousePointer, Eye, Smartphone, Monitor, Globe, Sparkles, Activity, Clock } from 'lucide-react';
+import { ArrowUpRight, MousePointer, Eye, Smartphone, Globe, Sparkles, Activity, Clock } from 'lucide-react';
 import { optimizeTextWithAI } from '../../services/aiService';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];

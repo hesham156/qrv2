@@ -23,6 +23,8 @@ export default function BookingModal({ adminId, employeeId, themeColor, onClose,
     // Destructure for dependency array stability
     const { days, start, end, slotDuration } = settings;
 
+    const daysStr = days.join(',');
+
     // Calculate slots when date changes
     useEffect(() => {
         if (!date) {
@@ -37,8 +39,9 @@ export default function BookingModal({ adminId, employeeId, themeColor, onClose,
                 const selectedDateObj = new Date(date);
                 const dayOfWeek = selectedDateObj.getDay();
 
+                const currentDays = daysStr ? daysStr.split(',').map(Number) : [];
                 // 1. Check if day is a working day
-                if (!days.includes(dayOfWeek)) {
+                if (!currentDays.includes(dayOfWeek)) {
                     setAvailableSlots([]);
                     return;
                 }
@@ -89,7 +92,7 @@ export default function BookingModal({ adminId, employeeId, themeColor, onClose,
         };
 
         fetchSlots();
-    }, [date, adminId, employeeId, days.join(','), start, end, slotDuration]); // dependency on primitives
+    }, [date, adminId, employeeId, daysStr, start, end, slotDuration]); // dependency on primitives
 
     const handleSubmit = async (e) => {
         e.preventDefault();
