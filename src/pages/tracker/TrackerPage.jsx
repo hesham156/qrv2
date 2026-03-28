@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, onSnapshot, updateDoc, increment, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, increment, arrayUnion } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-    CheckCircle2, Clock, Loader, ShieldCheck, ExternalLink,
-    AlertCircle, PartyPopper, Lock, ChevronRight, MessageSquare,
-    Send, Star, ThumbsUp, Calendar, User, Moon, Sun, Monitor,
+    CheckCircle2, Clock, Loader, ShieldCheck,
+    AlertCircle, Lock, ChevronRight, MessageSquare,
+    Send, ThumbsUp, Calendar, User, Moon, Sun,
     Download, FileText as FileIcon, Video as VideoIcon
 } from 'lucide-react';
 
@@ -410,10 +410,10 @@ export default function TrackerPage() {
                                     <p className="text-xs text-slate-500">Project Liaison</p>
                                 </div>
                             </div>
-                            <a href="#" className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/10 group">
+                            <button type="button" className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/10 group">
                                 <span className="text-sm font-bold">Request Callback</span>
                                 <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-transform" />
-                            </a>
+                            </button>
                         </div>
 
                         {/* Security Badge */}

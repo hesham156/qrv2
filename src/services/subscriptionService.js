@@ -1,6 +1,3 @@
-import { db } from "../config/firebase";
-import { doc, updateDoc } from "firebase/firestore";
-
 // Placeholder for real backend function
 // In production, this would call a Firebase Cloud Function
 export const createCheckoutSession = async (userId, planId) => {
@@ -23,13 +20,9 @@ export const createCheckoutSession = async (userId, planId) => {
 
 export const activateProPlan = async (userId) => {
     if (!userId) return;
-    try {
-        const userRef = doc(db, 'artifacts', '3c55e540-12f7-4654-8ecd-998e20f574e5', 'users', userId);
-        // This ID '3c55...' is likely dynamic in your app, we should pass appId or use the config one.
-        // But for now let's assume we pass the full reference or just use the logic from 'utils/planHelpers' if possible.
-        // Better:
-        // We will just return true and let the component handle it or use the standard firebase update.
-    } catch (e) {
-        console.error(e);
-    }
+    // This ID '3c55...' is likely dynamic in your app, we should pass appId or use the config one.
+    // But for now let's assume we pass the full reference or just use the logic from 'utils/planHelpers' if possible.
+    // Better:
+    // We will just return true and let the component handle it or use the standard firebase update.
+    return true;
 };
