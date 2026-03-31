@@ -117,7 +117,7 @@ export default function LandingLayout({ children, lang, toggleLang, t }) {
                         <ul className="space-y-3 text-sm font-medium">
                             <li><Link to="/blog" className="text-slate-400 hover:text-white transition-colors">{tr.footerBlog}</Link></li>
                             <li><Link to="/help" className="text-slate-400 hover:text-white transition-colors">{tr.footerHelp}</Link></li>
-                            <li><a href="#" className="text-slate-400 hover:text-white transition-colors">API</a></li>
+                            <li><button className="text-slate-400 hover:text-white transition-colors text-left">API</button></li>
                         </ul>
                     </div>
                     <div>

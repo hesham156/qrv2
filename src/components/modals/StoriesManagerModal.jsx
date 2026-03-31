@@ -1,7 +1,7 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp } from "firebase/firestore";
 import { useEffect, useState, useCallback } from "react";
 import { appId, db } from "../../config/firebase";
-import { CircleDashed, PlayCircle, Plus, Trash2, X, Loader2 } from "lucide-react";
+import { CircleDashed, PlayCircle, Plus, Trash2, X } from "lucide-react";
 import StoryForm from "./StoryForm";
 import { useToast } from "../../context/ToastContext";
 import ConfirmDialog from "../common/ConfirmDialog";

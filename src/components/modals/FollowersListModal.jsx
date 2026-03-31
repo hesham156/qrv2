@@ -1,4 +1,4 @@
-import { collection, onSnapshot, doc, deleteDoc, setDoc, increment } from "firebase/firestore";
+import { collection, onSnapshot, doc, deleteDoc, setDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { appId, db } from "../../config/firebase";
 import { Mail, Trash2, X, Users, Download, Send } from "lucide-react";
@@ -41,7 +41,6 @@ export default function FollowersListModal({ userId, employee, onClose, t, isEmb
     setIsDeleting(true);
     try {
       await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'followers', followerToDelete.id));
-      const docRef = doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id);
       // Let the snapshot handle the auto-sync to actual count to avoid race conditions!
       toast.success(t.deleted || "Follower removed.");
     } catch (e) {

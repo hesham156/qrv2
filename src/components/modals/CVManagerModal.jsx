@@ -13,7 +13,6 @@ export default function CVManagerModal({ userId, employee, onClose, t, isEmbedde
     const [skills, setSkills] = useState(employee?.skills || []);
     const [showCvOnProfile, setShowCvOnProfile] = useState(employee?.showCvOnProfile || false);
     const [isSaving, setIsSaving] = useState(false);
-    const [showPrintTemplate, setShowPrintTemplate] = useState(false);
     const toast = useToast();
 
     // TEMPORARY STATES FOR NEW ITEMS
