@@ -224,23 +224,7 @@ export default function SettingsModal({ onClose, user, t, lang }) {
                                 </div>
                             </div>
 
-                            {/* Dev Only: Promote to Admin */}
-                            <div className="mt-4 pt-4 border-t border-slate-100 mb-4">
-                                <button
-                                    type="button"
-                                    onClick={async () => {
-                                        if (window.confirm("Make this user a Super Admin?")) {
-                                            try {
-                                                await setDoc(doc(db, 'artifacts', appId, 'users', user.uid), { role: 'super_admin' }, { merge: true });
-                                                alert("Success! Refresh the page.");
-                                            } catch (e) { alert("Error: " + e.message); }
-                                        }
-                                    }}
-                                    className="text-xs text-slate-400 underline hover:text-slate-600 w-full text-center"
-                                >
-                                    (Dev) Promote to Super Admin
-                                </button>
-                            </div>
+
 
                             {/* Actions */}
                             <div className="flex items-center gap-3 pt-2">

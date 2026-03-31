@@ -3,8 +3,8 @@ import { useEffect } from 'react';
 export function useSEO(title, description, image) {
     useEffect(() => {
         // 1. Update Title
-        const defaultTitle = "DigiCard - Professional Digital Business Cards";
-        document.title = title ? `${title} | DigiCard` : defaultTitle;
+        const defaultTitle = "Get In Click - Professional Digital Business Cards";
+        document.title = title ? `${title} | Get In Click` : defaultTitle;
 
         // 2. Update Meta Description
         updateMeta('name', 'description', description || "Create professional digital business cards, share contact info instantly via QR codes.");

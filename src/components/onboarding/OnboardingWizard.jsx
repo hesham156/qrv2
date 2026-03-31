@@ -319,7 +319,7 @@ export default function OnboardingWizard({ user, t, onComplete, onSkip }) {
                 <div className="mt-12 text-center">
                     <div className="flex items-center justify-center gap-2 text-slate-300 font-bold tracking-tighter text-lg grayscale opacity-50">
                         <Wand2 size={20} />
-                        <span>DigiCard</span>
+                        <span>Get In Click</span>
                     </div>
                 </div>
             </div>

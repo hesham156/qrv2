@@ -14,7 +14,7 @@ export default function AuthLayout({ children, title, subtitle }) {
                 <div className="relative z-10">
                     <Link to="/" className="text-2xl font-bold flex items-center gap-2">
                         <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-blue-600 font-bold">D</div>
-                        DigiCard
+                        Get In Click
                     </Link>
                 </div>
 
@@ -33,7 +33,7 @@ export default function AuthLayout({ children, title, subtitle }) {
                 </div>
 
                 <div className="relative z-10 text-sm text-blue-200">
-                    © {new Date().getFullYear()} DigiCard Inc.
+                    © {new Date().getFullYear()} Get In Click.
                 </div>
             </div>
 

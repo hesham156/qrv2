@@ -8,11 +8,13 @@ import ProfileSkeleton from './components/skeletons/ProfileSkeleton';
 import PageTransition from './components/ui/PageTransition';
 import BrandedLoader from './components/ui/BrandedLoader';
 import { AnimatePresence } from 'framer-motion';
+import { ToastProvider } from './context/ToastContext';
 
 // Lazy Load Pages
 const LoginView = lazy(() => import('./pages/auth/LoginView'));
 const RegisterView = lazy(() => import('./pages/auth/RegisterView'));
 const VerifyEmailView = lazy(() => import('./pages/auth/VerifyEmailView'));
+const ForgotPasswordView = lazy(() => import('./pages/auth/ForgotPasswordView'));
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
 const SingleCardDashboard = lazy(() => import('./pages/dashboard/SingleCardDashboard'));
 const ProfileView = lazy(() => import('./pages/profile/ProfileView'));
@@ -246,83 +248,86 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <AppLogic>
-        {(installPrompt, location) => {
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <AnimatePresence mode="wait">
-                <Routes location={location} key={location.pathname}>
-                  {/* Marketing Pages */}
-                  <Route path="/" element={<PageTransition><Home /></PageTransition>} />
-                  <Route path="/pricing" element={<PageTransition><Pricing /></PageTransition>} />
-                  <Route path="/features" element={<PageTransition><Features /></PageTransition>} />
-                  <Route path="/contact" element={<PageTransition><Contact /></PageTransition>} />
+    <ToastProvider>
+      <BrowserRouter>
+        <AppLogic>
+          {(installPrompt, location) => {
+            return (
+              <Suspense fallback={<PageLoader />}>
+                <AnimatePresence mode="wait">
+                  <Routes location={location} key={location.pathname}>
+                    {/* Marketing Pages */}
+                    <Route path="/" element={<PageTransition><Home lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
+                    <Route path="/pricing" element={<PageTransition><Pricing lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
+                    <Route path="/features" element={<PageTransition><Features lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
+                    <Route path="/contact" element={<PageTransition><Contact lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
 
-                  {/* Auth */}
-                  <Route path="/login" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <PageTransition><LoginView lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
-                  <Route path="/register" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <PageTransition><RegisterView lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
-                  <Route path="/verify-email" element={user ? (user.emailVerified ? <Navigate to="/dashboard" /> : <PageTransition><VerifyEmailView /></PageTransition>) : <Navigate to="/login" />} />
+                    {/* Auth */}
+                    <Route path="/login" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <PageTransition><LoginView lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
+                    <Route path="/register" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <PageTransition><RegisterView lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
+                    <Route path="/verify-email" element={user ? (user.emailVerified ? <Navigate to="/dashboard" /> : <PageTransition><VerifyEmailView /></PageTransition>) : <Navigate to="/login" />} />
+                    <Route path="/forgot-password" element={user && !user.isAnonymous ? <Navigate to="/dashboard" /> : <PageTransition><ForgotPasswordView lang={lang} toggleLang={toggleLang} t={t} /></PageTransition>} />
 
-                  {/* App */}
-                  <Route path="/payment/success" element={<ProtectedRoute user={user}><PageTransition><PaymentSuccess /></PageTransition></ProtectedRoute>} />
-                  <Route path="/payment/cancel" element={<Navigate to="/pricing" />} />
+                    {/* App */}
+                    <Route path="/payment/success" element={<ProtectedRoute user={user}><PageTransition><PaymentSuccess /></PageTransition></ProtectedRoute>} />
+                    <Route path="/payment/cancel" element={<Navigate to="/pricing" />} />
 
-                  <Route path="/dashboard" element={
-                    <ProtectedRoute user={user}>
-                      <PageTransition>
-                        <Dashboard
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute user={user}>
+                        <PageTransition>
+                          <Dashboard
+                            user={user}
+                            onLogout={() => auth.signOut()}
+                            lang={lang}
+                            toggleLang={toggleLang}
+                            t={t}
+                            installPrompt={installPrompt}
+                            onInstall={() => {
+                              if (installPrompt) {
+                                installPrompt.prompt();
+                                installPrompt.userChoice.then(res => {
+                                  // if (res.outcome === 'accepted') console.log('Accepted');
+                                });
+                              }
+                            }}
+                          />
+                        </PageTransition>
+
+                      </ProtectedRoute>
+                    } />
+
+                    <Route path="/dashboard/card/:cardId/*" element={
+                      <ProtectedRoute user={user}>
+                        <SingleCardDashboard
                           user={user}
-                          onLogout={() => auth.signOut()}
-                          lang={lang}
-                          toggleLang={toggleLang}
                           t={t}
-                          installPrompt={installPrompt}
-                          onInstall={() => {
-                            if (installPrompt) {
-                              installPrompt.prompt();
-                              installPrompt.userChoice.then(res => {
-                                // if (res.outcome === 'accepted') console.log('Accepted');
-                              });
-                            }
-                          }}
+                          lang={lang}
+                          onLogout={() => auth.signOut()}
+                          toggleLang={toggleLang}
                         />
-                      </PageTransition>
+                      </ProtectedRoute>
+                    } />
 
-                    </ProtectedRoute>
-                  } />
+                    {/* Public Tracking Link */}
+                    <Route path="/tracker/:uid/:tid" element={<PageTransition><TrackerPage /></PageTransition>} />
 
-                  <Route path="/dashboard/card/:cardId/*" element={
-                    <ProtectedRoute user={user}>
-                      <SingleCardDashboard
-                        user={user}
-                        t={t}
-                        lang={lang}
-                        onLogout={() => auth.signOut()}
-                        toggleLang={toggleLang}
-                      />
-                    </ProtectedRoute>
-                  } />
-
-                  {/* Public Tracking Link */}
-                  <Route path="/tracker/:uid/:tid" element={<PageTransition><TrackerPage /></PageTransition>} />
-
-                  {/* Profile Routes */}
-                  <Route path="/p/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
-                  <Route path="/profile" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
-                  {/* Root Slug Catch-all - Must be last before * */}
-                  <Route path="/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
+                    {/* Profile Routes */}
+                    <Route path="/p/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
+                    <Route path="/profile" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
+                    {/* Root Slug Catch-all - Must be last before * */}
+                    <Route path="/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
 
 
-                  {/* Fallback for legacy hash routes or 404 */}
-                  <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-                </Routes>
-              </AnimatePresence>
-            </Suspense>
-          );
-        }}
-      </AppLogic>
-    </BrowserRouter>
+                    {/* Fallback for legacy hash routes or 404 */}
+                    <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+                  </Routes>
+                </AnimatePresence>
+              </Suspense>
+            );
+          }}
+        </AppLogic>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }
 

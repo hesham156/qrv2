@@ -5,6 +5,8 @@ import { appId, db } from "../../config/firebase";
 import { Package, Plus, ShoppingBag, Trash2, X, Lock, Upload, Loader2 } from "lucide-react";
 import { isItemLocked } from "../../utils/planHelpers";
 import { uploadToWordPress } from "../../services/wordpressStorage";
+import { useToast } from "../../context/ToastContext";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 export default function ProductsManagerModal({ userId, employee, onClose, t, user, onUpgrade, isEmbedded }) {
   const [products, setProducts] = useState([]);
@@ -13,6 +15,10 @@ export default function ProductsManagerModal({ userId, employee, onClose, t, use
 
   const [isAdding, setIsAdding] = useState(false);
   const [uploading, setUploading] = useState(false);
+  
+  const toast = useToast();
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -22,8 +28,9 @@ export default function ProductsManagerModal({ userId, employee, onClose, t, use
     try {
       const url = await uploadToWordPress(file);
       setNewProduct(prev => ({ ...prev, imageUrl: url }));
+      toast.success(t.uploadSuccess || "Image uploaded!");
     } catch (error) {
-      alert((t.uploadFailed || "Upload failed") + ": " + error.message);
+      toast.error((t.uploadFailed || "Upload failed") + ": " + error.message);
     } finally {
       setUploading(false);
     }
@@ -48,7 +55,7 @@ export default function ProductsManagerModal({ userId, employee, onClose, t, use
     const plan = user?.plan || 'free';
     if (plan === 'free' && products.length >= 1) {
       if (onUpgrade) onUpgrade();
-      else alert(t.upgradeMsg);
+      else toast.info(t.upgradeMsg);
       return;
     }
 
@@ -59,18 +66,27 @@ export default function ProductsManagerModal({ userId, employee, onClose, t, use
         createdAt: serverTimestamp()
       });
       setNewProduct({ name: '', price: '', description: '', imageUrl: '', link: '' });
+      toast.success(t.saved || "Product Added!");
     } catch (error) {
       console.error(error);
+      toast.error(t.saveError || "Error saving product.");
     } finally {
       setIsAdding(false);
     }
   };
 
-  const handleDeleteProduct = async (prodId) => {
-    if (window.confirm(t.confirmDelete || 'Delete product?')) {
-      try {
-        await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'products', prodId));
-      } catch (error) { console.error(error); }
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'products', productToDelete.id));
+      toast.success(t.deleted || "Product deleted.");
+      setProductToDelete(null);
+    } catch (error) {
+      console.error(error);
+      toast.error(t.deleteError || "Error deleting.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -98,10 +114,14 @@ export default function ProductsManagerModal({ userId, employee, onClose, t, use
     return (
       <>
         {/* Add Form */}
-        <form onSubmit={handleAddProduct} className="bg-white p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
-          {/* ... Form Content ... */}
-          <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><Plus size={16} /> {t.addProduct}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <form onSubmit={handleAddProduct} className="bg-white p-5 rounded-2xl border border-slate-200 mb-6 shadow-sm">
+          <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+            <div className="bg-indigo-50 p-1.5 rounded-lg">
+              <Plus size={16} className="text-indigo-600" />
+            </div>
+            {t.addProduct || "Add New Product"}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input required value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} className="px-3 py-2 border rounded-lg text-sm" placeholder={t.prodName} />
             <input value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} className="px-3 py-2 border rounded-lg text-sm" placeholder={t.prodPrice} />
             <div className="flex gap-2">
@@ -120,24 +140,34 @@ export default function ProductsManagerModal({ userId, employee, onClose, t, use
         </form>
 
         {/* List */}
-        {loading ? <div className="text-center py-4">{t.loading}</div> : (
-          products.length === 0 ? <div className="text-center text-slate-400 py-4">{t.noProducts}</div> : (
+        {loading ? <div className="text-center py-4 flex justify-center"><Loader2 size={24} className="animate-spin text-indigo-500" /></div> : (
+          products.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-slate-50 text-slate-300 flex items-center justify-center rounded-2xl mb-4">
+                <Package size={32} />
+              </div>
+              <h4 className="text-lg font-bold text-slate-800 mb-1">{t.noProducts || "No Products Yet"}</h4>
+              <p className="text-sm text-slate-500 max-w-sm">
+                Add your first product or service using the form above to start displaying it on your digital card.
+              </p>
+            </div>
+          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {products.map((prod, index) => {
                 const isLocked = isItemLocked(index, user);
                 return (
                   <div key={prod.id} className="relative">
-                    <div className="bg-white p-3 rounded-xl border border-slate-200 flex gap-3 relative group">
-                      <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 flex gap-3 relative group transition-all hover:border-indigo-200 hover:shadow-md">
+                      <div className="w-16 h-16 bg-slate-50 rounded-lg overflow-hidden flex-shrink-0">
                         {prod.imageUrl ? <img src={prod.imageUrl} className="w-full h-full object-cover" alt={prod.name} /> : <Package className="w-full h-full p-4 text-slate-300" />}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-slate-800 truncate">{prod.name}</div>
-                        <div className="text-indigo-600 text-sm font-bold">{prod.price} {t.currency}</div>
-                        <p className="text-xs text-slate-500 line-clamp-2">{prod.description}</p>
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <div className="font-bold text-slate-800 truncate leading-none mb-1.5">{prod.name}</div>
+                        <div className="text-indigo-600 text-sm font-bold mb-1">{prod.price} {t.currency}</div>
+                        <p className="text-xs text-slate-500 line-clamp-1">{prod.description}</p>
                       </div>
                       {!isLocked && (
-                        <button onClick={() => handleDeleteProduct(prod.id)} className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button type="button" onClick={() => setProductToDelete(prod)} className="absolute top-2 right-2 p-1.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-all">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -179,6 +209,17 @@ export default function ProductsManagerModal({ userId, employee, onClose, t, use
           {renderContent()}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!productToDelete}
+        title={t.confirmDeleteTitle || "Delete Product?"}
+        message={t.confirmDeleteMsg || "Are you sure you want to permanently delete this product from your list?"}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setProductToDelete(null)}
+        isLoading={isDeleting}
+        confirmText={t.deleteBtn || "Delete"}
+        cancelText={t.cancel || "Cancel"}
+      />
     </div>
   );
 }

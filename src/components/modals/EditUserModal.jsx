@@ -5,8 +5,11 @@ import { X, Save, Calendar } from 'lucide-react';
 
 export default function EditUserModal({ user, onClose, onUpdate, t }) {
     const [plan, setPlan] = useState(user.plan || 'free');
+    const [role, setRole] = useState(user.role || 'user'); // New role state
     const [expiry, setExpiry] = useState(
-        user.planExpiresAt ? new Date(user.planExpiresAt.toDate()).toISOString().split('T')[0] : ''
+        user.planExpiresAt 
+            ? (typeof user.planExpiresAt.toDate === 'function' ? user.planExpiresAt.toDate() : new Date(user.planExpiresAt)).toISOString().split('T')[0] 
+            : ''
     );
     const [loading, setLoading] = useState(false);
 
@@ -17,10 +20,12 @@ export default function EditUserModal({ user, onClose, onUpdate, t }) {
             const userRef = doc(db, 'artifacts', appId, 'users', user.id);
             const updates = {
                 plan,
+                role: role === 'user' ? null : role, // Treat 'user' as default (null removes field or sets to null)
                 planExpiresAt: expiry ? new Date(expiry) : null
             };
             await updateDoc(userRef, updates);
-            onUpdate({ ...user, ...updates }); // Optimistic update
+            // Wait, we need to pass back the updated role cleanly
+            onUpdate({ ...user, ...updates, role: role === 'user' ? undefined : role }); 
             onClose();
         } catch (error) {
             console.error("Error updating user:", error);
@@ -34,13 +39,34 @@ export default function EditUserModal({ user, onClose, onUpdate, t }) {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <h3 className="font-bold text-lg text-slate-800">{t.editUser}</h3>
+                    <h3 className="font-bold text-lg text-slate-800">{t.editUser || 'Edit User'}</h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X size={20} /></button>
                 </div>
 
                 <form onSubmit={handleSave} className="p-6 space-y-4">
+                    {/* Role Selection */}
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">{t.currentPlan}</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">{t.role || 'User Role'}</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {['user', 'super_admin'].map(r => (
+                                <button
+                                    key={r}
+                                    type="button"
+                                    onClick={() => setRole(r)}
+                                    className={`py-2 px-2 text-xs font-bold rounded-lg border-2 capitalize transition-all ${role === r
+                                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                        : 'border-slate-200 text-slate-500 hover:border-indigo-200'
+                                        }`}
+                                >
+                                    {r === 'super_admin' ? 'Super Admin' : 'User'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Plan Selection */}
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">{t.currentPlan || 'Current Plan'}</label>
                         <div className="grid grid-cols-3 gap-2">
                             {['free', 'pro', 'enterprise'].map(p => (
                                 <button

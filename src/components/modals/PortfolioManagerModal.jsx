@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { collection, addDoc, doc, onSnapshot, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { appId, db } from "../../config/firebase";
-import { Briefcase, Plus, Trash2, X, Image as ImageIcon, Upload, Loader2 } from "lucide-react";
+import { Briefcase, Plus, Trash2, X, Image as ImageIcon, Upload, Loader2, Play } from "lucide-react";
 import { uploadToWordPress } from "../../services/wordpressStorage";
+import { useToast } from "../../context/ToastContext";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 export default function PortfolioManagerModal({ userId, employee, onClose, t, user, onUpgrade, isEmbedded }) {
     const [items, setItems] = useState([]);
@@ -19,6 +21,10 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
     const [isAdding, setIsAdding] = useState(false);
     const [uploading, setUploading] = useState(false);
 
+    const toast = useToast();
+    const [itemToDelete, setItemToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -27,8 +33,9 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
         try {
             const url = await uploadToWordPress(file);
             setNewItem(prev => ({ ...prev, imageUrl: url }));
+            toast.success(t.uploadSuccess || "Image uploaded!");
         } catch (error) {
-            alert((t.uploadFailed || "Upload failed") + ": " + error.message);
+            toast.error((t.uploadFailed || "Upload failed") + ": " + error.message);
         } finally {
             setUploading(false);
         }
@@ -65,18 +72,27 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
                 createdAt: serverTimestamp()
             });
             setNewItem({ title: '', description: '', imageUrl: '', link: '', category: 'other', mediaType: 'image', videoUrl: '' });
+            toast.success(t.saved || "Project Added!");
         } catch (error) {
             console.error(error);
+            toast.error(t.saveError || "Error saving project.");
         } finally {
             setIsAdding(false);
         }
     };
 
-    const handleDeleteItem = async (itemId) => {
-        if (window.confirm(t.confirmDelete || 'Delete this project?')) {
-            try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'portfolio', itemId));
-            } catch (error) { console.error(error); }
+    const handleConfirmDelete = async () => {
+        if (!itemToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'portfolio', itemToDelete.id));
+            toast.success(t.deleted || "Project deleted.");
+            setItemToDelete(null);
+        } catch (error) {
+            console.error(error);
+            toast.error(t.deleteError || "Error deleting project.");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -100,11 +116,14 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
         return (
             <>
                 {/* Add Form */}
-                <form onSubmit={handleAddItem} className="bg-white p-4 rounded-xl border border-slate-200 mb-6 shadow-sm">
-                    <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                        <Plus size={16} /> {t.addProject || "Add Project"}
+                <form onSubmit={handleAddItem} className="bg-white p-5 rounded-2xl border border-slate-200 mb-6 shadow-sm">
+                    <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <div className="bg-indigo-50 p-1.5 rounded-lg">
+                            <Plus size={16} className="text-indigo-600" />
+                        </div>
+                        {t.addProject || "Add Project"}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input
                             required
                             value={newItem.title}
@@ -180,24 +199,41 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
                 </form>
 
                 {/* List */}
-                {loading ? <div className="text-center py-4">{t.loading || "Loading..."}</div> : (
-                    items.length === 0 ? <div className="text-center text-slate-400 py-4">{t.noProjects || "No projects yet."}</div> : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {loading ? <div className="text-center py-4 flex justify-center"><Loader2 size={24} className="animate-spin text-indigo-500" /></div> : (
+                    items.length === 0 ? (
+                        <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center">
+                            <div className="w-16 h-16 bg-slate-50 text-slate-300 flex items-center justify-center rounded-2xl mb-4">
+                                <Briefcase size={32} />
+                            </div>
+                            <h4 className="text-lg font-bold text-slate-800 mb-1">{t.noProjects || "No Projects Yet"}</h4>
+                            <p className="text-sm text-slate-500 max-w-sm">
+                                Add your past work, links, or videos to start building your professional portfolio.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {items.map((item, index) => {
-                                // Reuse logic or make it free for all
                                 return (
                                     <div key={item.id} className="relative">
-                                        <div className="bg-white p-3 rounded-xl border border-slate-200 flex gap-3 relative group">
-                                            <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-                                                {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" alt={item.title || "Project"} /> : <ImageIcon className="w-full h-full p-4 text-slate-300" />}
+                                        <div className="bg-white p-3 rounded-xl border border-slate-200 flex gap-3 relative group transition-all hover:border-indigo-200 hover:shadow-md">
+                                            <div className="w-20 h-20 bg-slate-50 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center relative">
+                                                {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" alt={item.title || "Project"} /> : <ImageIcon className="w-8 h-8 text-slate-300" />}
+                                                {item.mediaType === 'video' && (
+                                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                                        <Play size={20} className="text-white drop-shadow-lg" fill="currentColor" />
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-bold text-slate-800 truncate">{item.title}</div>
-                                                <div className="text-xs text-slate-500 line-clamp-2">{item.description}</div>
-                                                {item.link && <a href={item.link} target="_blank" rel="noreferrer" className="text-xs text-indigo-500 hover:underline mt-1 block truncate">{item.link}</a>}
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center py-1">
+                                                <div className="font-bold text-slate-800 truncate mb-1">{item.title}</div>
+                                                <div className="text-xs text-slate-500 line-clamp-2 mb-1.5 leading-snug">{item.description}</div>
+                                                <div className="flex items-center justify-between">
+                                                  <span className="text-[10px] font-bold tracking-wide uppercase bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{item.category}</span>
+                                                  {item.link && <a href={item.link} target="_blank" rel="noreferrer" className="text-[11px] font-medium text-indigo-500 hover:underline max-w-[80px] truncate">{item.link}</a>}
+                                                </div>
                                             </div>
                                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 absolute top-2 right-2">
-                                                <button onClick={() => handleDeleteItem(item.id)} className="p-1.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100">
+                                                <button type="button" onClick={() => setItemToDelete(item)} className="p-1.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 shadow-sm">
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>
@@ -227,6 +263,17 @@ export default function PortfolioManagerModal({ userId, employee, onClose, t, us
                     {renderContent()}
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={!!itemToDelete}
+                title={t.confirmDeleteTitle || "Delete Project?"}
+                message={t.confirmDeleteMsg || "Are you sure you want to permanently delete this project from your portfolio?"}
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setItemToDelete(null)}
+                isLoading={isDeleting}
+                confirmText={t.deleteBtn || "Delete"}
+                cancelText={t.cancel || "Cancel"}
+            />
         </div>
     );
 }

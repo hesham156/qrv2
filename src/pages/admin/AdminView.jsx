@@ -95,7 +95,13 @@ export default function AdminView({ t }) {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-xs text-slate-500">
-                                    {u.planExpiresAt ? new Date(u.planExpiresAt.seconds * 1000).toLocaleDateString() : (t?.forever || 'Forever')}
+                                    {u.planExpiresAt ? (
+                                        typeof u.planExpiresAt.seconds === 'number' 
+                                            ? new Date(u.planExpiresAt.seconds * 1000).toLocaleDateString() 
+                                            : new Date(u.planExpiresAt).toLocaleDateString() === 'Invalid Date'
+                                                ? String(u.planExpiresAt)
+                                                : new Date(u.planExpiresAt).toLocaleDateString()
+                                    ) : (t?.forever || 'Forever')}
                                 </td>
                                 <td className="px-6 py-4">
                                     {u.role === 'super_admin' ? (

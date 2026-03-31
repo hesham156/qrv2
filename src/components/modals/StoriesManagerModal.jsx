@@ -1,13 +1,19 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp } from "firebase/firestore";
 import { useEffect, useState, useCallback } from "react";
 import { appId, db } from "../../config/firebase";
-import { CircleDashed, PlayCircle, Plus, Trash2, X } from "lucide-react";
+import { CircleDashed, PlayCircle, Plus, Trash2, X, Loader2 } from "lucide-react";
 import StoryForm from "./StoryForm";
+import { useToast } from "../../context/ToastContext";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 export default function StoriesManagerModal({ userId, employee, onClose, t, isEmbedded }) {
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+
+  const toast = useToast();
+  const [storyToDelete, setStoryToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadStories = useCallback(async () => {
     try {
@@ -34,19 +40,27 @@ export default function StoriesManagerModal({ userId, employee, onClose, t, isEm
       await addDoc(storiesRef, { ...storyData, createdAt: serverTimestamp() });
       await loadStories();
       setShowForm(false);
+      toast.success(t.saved || "Story saved seamlessly!");
     } catch (error) {
       console.error('Error saving story:', error);
+      toast.error(t.saveError || "Failed to save story.");
     }
   };
 
-  const handleDeleteStory = async (storyId) => {
-    if (!window.confirm(t.confirmDelete || 'Are you sure?')) return;
+  const handleConfirmDelete = async () => {
+    if (!storyToDelete) return;
+    setIsDeleting(true);
     try {
-      const storyRef = doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'stories', storyId);
+      const storyRef = doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'stories', storyToDelete.id);
       await deleteDoc(storyRef);
       await loadStories();
+      toast.success(t.deleted || "Story removed.");
+      setStoryToDelete(null);
     } catch (error) {
       console.error('Error deleting story:', error);
+      toast.error(t.deleteError || "Failed to remove story.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -87,9 +101,14 @@ export default function StoriesManagerModal({ userId, employee, onClose, t, isEm
             </button>
 
             {stories.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">
-                <CircleDashed size={48} className="mx-auto mb-3 opacity-20" />
-                <p>{t.noStories || 'No stories yet'}</p>
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center mt-6">
+                <div className="w-16 h-16 bg-pink-50 text-pink-300 flex items-center justify-center rounded-2xl mb-4">
+                  <CircleDashed size={32} />
+                </div>
+                <h4 className="text-lg font-bold text-slate-800 mb-1">{t.noStories || "No Stories Yet"}</h4>
+                <p className="text-sm text-slate-500 max-w-sm mb-6">
+                  Share moments, offers, or news with your audience by adding an interactive Story to your profile.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
@@ -102,10 +121,10 @@ export default function StoriesManagerModal({ userId, employee, onClose, t, isEm
                     )}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <button
-                        onClick={() => handleDeleteStory(story.id)}
-                        className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                        onClick={() => setStoryToDelete(story)}
+                        className="p-3 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-lg hover:scale-110 transform duration-200"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={20} />
                       </button>
                     </div>
                     {story.type === 'video' && (
@@ -140,6 +159,17 @@ export default function StoriesManagerModal({ userId, employee, onClose, t, isEm
           {renderContent()}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!storyToDelete}
+        title={t.confirmDeleteTitle || "Delete Story?"}
+        message={t.confirmDeleteMsg || "Are you sure you want to permanently delete this story from your profile?"}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setStoryToDelete(null)}
+        isLoading={isDeleting}
+        confirmText={t.deleteBtn || "Delete"}
+        cancelText={t.cancel || "Cancel"}
+      />
     </div>
   );
 }

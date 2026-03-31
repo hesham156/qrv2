@@ -2,10 +2,16 @@ import { collection, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/fire
 import { useEffect, useState } from "react";
 import { appId, db } from "../../config/firebase";
 import { Trash2, X, Star, EyeOff, Eye } from "lucide-react";
+import { useToast } from "../../context/ToastContext";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 export default function ReviewsManager({ userId, employee, onClose, t, isEmbedded }) {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const toast = useToast();
+  const [reviewToDelete, setReviewToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const q = collection(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'reviews');
@@ -23,26 +29,42 @@ export default function ReviewsManager({ userId, employee, onClose, t, isEmbedde
     return () => unsubscribe();
   }, [userId, employee.id]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm(t.confirmDelete || "هل أنت متأكد من حذف هذا التقييم؟")) {
-      await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'reviews', id));
-      // Adjusting overall rating logic can also be done manually or via cloud functions,
-      // for now we just delete the review visually and from collection.
+  const handleConfirmDelete = async () => {
+    if (!reviewToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'reviews', reviewToDelete.id));
+      toast.success(t.deleted || "Review deleted.");
+    } catch (error) {
+      toast.error(t.deleteError || "Failed to delete review.");
+    } finally {
+      setIsDeleting(false);
+      setReviewToDelete(null);
     }
   };
 
   const handleToggleHide = async (id, currentHiddenStat) => {
-      await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'reviews', id), {
-          isHidden: !currentHiddenStat
-      });
+      try {
+        await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'reviews', id), {
+            isHidden: !currentHiddenStat
+        });
+        toast.success(currentHiddenStat ? (t.reviewShown || "Review is now visible") : (t.reviewHidden || "Review hidden successfully"));
+      } catch (error) {
+        toast.error("Status update failed");
+      }
   };
 
   const renderContent = () => {
     if (loading) return <div className="text-center py-12 text-slate-500 font-bold">{t.loading || "جاري التحميل..."}</div>;
     if (reviews.length === 0) return (
-        <div className="text-center py-16 text-slate-400">
-            <Star size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="font-bold">{t.noReviews || "لا توجد تقييمات حتى الآن."}</p>
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center mt-6">
+          <div className="w-16 h-16 bg-amber-50 text-amber-500 flex items-center justify-center rounded-2xl mb-4">
+            <Star size={32} className="fill-amber-500" />
+          </div>
+          <h4 className="text-lg font-bold text-slate-800 mb-1">{t.noReviews || "No reviews yet."}</h4>
+          <p className="text-sm text-slate-500 max-w-sm mb-6">
+            When clients rate your services, their feedback will appear here. You can hide or delete reviews anytime.
+          </p>
         </div>
     );
     return (
@@ -68,7 +90,7 @@ export default function ReviewsManager({ userId, employee, onClose, t, isEmbedde
                     {r.isHidden ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
                 <button 
-                  onClick={() => handleDelete(r.id)} 
+                  onClick={() => setReviewToDelete(r)} 
                   title={t.delete || "حذف"}
                   className="p-2 bg-slate-50 hover:bg-red-50 rounded-xl text-slate-400 hover:text-red-600 transition-colors"
                 >
@@ -137,6 +159,17 @@ export default function ReviewsManager({ userId, employee, onClose, t, isEmbedde
             {renderContent()}
         </div>
       </div>
+      
+      <ConfirmDialog
+        isOpen={!!reviewToDelete}
+        title={t.confirmDeleteTitle || "Delete Review?"}
+        message={t.confirmDeleteMsg || "Are you sure you want to permanently delete this review?"}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setReviewToDelete(null)}
+        isLoading={isDeleting}
+        confirmText={t.deleteBtn || "Delete"}
+        cancelText={t.cancel || "Cancel"}
+      />
     </div>
   );
 }

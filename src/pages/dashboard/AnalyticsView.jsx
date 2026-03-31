@@ -102,9 +102,27 @@ export default function AnalyticsView({ employees = [], user }) {
         // Link Type Data for Pie Chart (Original + New Clicks)
         const linkMap = {};
         filtered.forEach(e => {
-            if (e.type === 'click' || e.type.includes('_click')) {
-                const type = e.subtype || e.type;
-                linkMap[type] = (linkMap[type] || 0) + 1;
+            if (e.type === 'click' || e.type.includes('_click') || e.type.includes('story_') || e.type.includes('follow') || e.type === 'save_contact') {
+                let typeStr = e.subtype || e.type;
+                
+                if (typeStr.includes('story_reaction')) typeStr = 'Story Reaction';
+                else if (typeStr.includes('story_reply')) typeStr = 'Story Reply';
+                else if (typeStr.includes('story_view')) typeStr = 'Story View';
+                else if (typeStr.includes('buy_')) typeStr = 'Product Purchase';
+                else if (typeStr === 'inquiry') typeStr = 'Product Inquiry';
+                else if (typeStr === 'save_contact') typeStr = 'Save Contact';
+                else if (typeStr.includes('follow')) typeStr = 'Follow/Unfollow';
+                else if (typeStr === 'whatsapp') typeStr = 'WhatsApp';
+                else if (typeStr === 'call') typeStr = 'Phone Call';
+                else if (typeStr === 'website') typeStr = 'Website';
+                else if (typeStr === 'portfolio_click' || typeStr.includes('portfolio')) typeStr = 'Portfolio Visit';
+                else if (typeStr === 'product_click') typeStr = 'Product View';
+                else {
+                    typeStr = typeStr.replace(/_/g, ' ');
+                    typeStr = typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
+                }
+
+                linkMap[typeStr] = (linkMap[typeStr] || 0) + 1;
             }
         });
         const linkData = Object.keys(linkMap).map(key => ({ name: key, value: linkMap[key] }));
@@ -305,7 +323,7 @@ export default function AnalyticsView({ employees = [], user }) {
                                     <Pie
                                         data={stats.linkData}
                                         cx="50%"
-                                        cy="50%"
+                                        cy="45%"
                                         innerRadius={60}
                                         outerRadius={80}
                                         paddingAngle={5}
@@ -315,8 +333,15 @@ export default function AnalyticsView({ employees = [], user }) {
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip />
-                                    <Legend layout="vertical" verticalAlign="bottom" align="center" />
+                                    <Tooltip 
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Legend 
+                                        layout="horizontal" 
+                                        verticalAlign="bottom" 
+                                        align="center" 
+                                        wrapperStyle={{ paddingTop: "10px", fontSize: "12px" }}
+                                    />
                                 </PieChart>
                             </ResponsiveContainer>
                         ) : (

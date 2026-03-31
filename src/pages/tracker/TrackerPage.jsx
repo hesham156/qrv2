@@ -210,7 +210,7 @@ export default function TrackerPage() {
                                 {task.projectManagement?.estimatedDelivery && (
                                     <div className="flex items-center gap-2 border-l rtl:border-r border-slate-200 pl-4 rtl:pr-4">
                                         <Calendar size={14} style={{ color: primaryColor }} />
-                                        {isRtl ? 'موعد التسليم المتوقع:' : 'Expected:'} {new Date(task.projectManagement.estimatedDelivery.seconds * 1000).toLocaleDateString()}
+                                        {isRtl ? 'موعد التسليم المتوقع:' : 'Expected:'} {typeof task.projectManagement.estimatedDelivery.seconds === 'number' ? new Date(task.projectManagement.estimatedDelivery.seconds * 1000).toLocaleDateString() : new Date(task.projectManagement.estimatedDelivery).toLocaleDateString()}
                                     </div>
                                 )}
                             </div>

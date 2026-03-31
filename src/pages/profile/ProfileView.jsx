@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { doc, getDoc, collection, setDoc, increment, getDocs, query, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, appId } from '../../config/firebase';
@@ -34,6 +35,7 @@ import {
 import { isPlanActive } from '../../utils/planHelpers';
 import ProfileSkeleton from '../../components/skeletons/ProfileSkeleton';
 import { useSEO } from '../../hooks/useSEO';
+import ATSCvTemplate from '../../components/cv/ATSCvTemplate';
 
 // Lazy Load Modals
 const LeadCaptureModal = lazy(() => import('../../components/modals/LeadCaptureModal'));
@@ -429,52 +431,59 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
           });
           setLoading(false);
 
-          // ✅ analytics في الخلفية (مرة واحدة فقط)
+          // ✅ analytics في الخلفية (مرة واحدة فقط وثم مرة لكل جلسة)
           if (!isLogged.current) {
             isLogged.current = true;
-            const hash = window.location.hash || '';
-            const fromQR = hash.includes('src=qr');
+            
+            const sessionKey = `viewed_${profileData.id}`;
+            const hasViewedInSession = sessionStorage.getItem(sessionKey);
 
-            (async () => {
-              try {
-                // Fetch basic geo for stats (faster and doesn't block UI)
-                let countryCode = 'Unknown';
-                let lat = 0;
-                let lng = 0;
+            if (!hasViewedInSession) {
+              sessionStorage.setItem(sessionKey, 'true');
+              const hash = window.location.hash || '';
+              const fromQR = hash.includes('src=qr');
+
+              (async () => {
                 try {
-                  // api.country.is is extremely lenient with CORS on localhost and AdBlockers
-                  const res = await fetch('https://api.country.is/');
-                  if (res.ok) {
-                    const geo = await res.json();
-                    countryCode = geo.country || 'Unknown';
+                  // Fetch basic geo for stats (faster and doesn't block UI)
+                  let countryCode = 'Unknown';
+                  let lat = 0;
+                  let lng = 0;
+                  try {
+                    // api.country.is is extremely lenient with CORS on localhost and AdBlockers
+                    const res = await fetch('https://api.country.is/');
+                    if (res.ok) {
+                      const geo = await res.json();
+                      countryCode = geo.country || 'Unknown';
+                    }
+                  } catch (e) {
+                    // silent catch to prevent console panic
                   }
+                  const locationKey = `${Math.round(lat * 10) / 10}_${Math.round(lng * 10) / 10}`;
+
+                  logAnalyticsEvent(
+                    profileData.adminId,
+                    profileData.id,
+                    'view',
+                    fromQR ? 'qr_scan' : 'link',
+                    { country: countryCode }
+                  );
+
+                  const statsUpdate = {
+                    views: increment(1),
+                    countries: { [countryCode]: increment(1) },
+                    heatmap: { [locationKey]: increment(1) },
+                    ...(fromQR ? { scans: increment(1) } : {})
+                  };
+
+                  await setDoc(empRef, { stats: statsUpdate }, { merge: true });
                 } catch (e) {
-                  // silent catch to prevent console panic
+                  console.warn('Analytics error:', e);
+                  // Fallback: increment views at least
+                  setDoc(empRef, { stats: { views: increment(1) } }, { merge: true }).catch(() => { });
                 }
-                const locationKey = `${Math.round(lat * 10) / 10}_${Math.round(lng * 10) / 10}`;
-
-                logAnalyticsEvent(
-                  profileData.adminId,
-                  profileData.id,
-                  'view',
-                  fromQR ? 'qr_scan' : 'link',
-                  { country: countryCode }
-                );
-
-                const statsUpdate = {
-                  views: increment(1),
-                  countries: { [countryCode]: increment(1) },
-                  heatmap: { [locationKey]: increment(1) },
-                  ...(fromQR ? { scans: increment(1) } : {})
-                };
-
-                await setDoc(empRef, { stats: statsUpdate }, { merge: true });
-              } catch (e) {
-                console.warn('Analytics error:', e);
-                // Fallback: increment views at least
-                setDoc(empRef, { stats: { views: increment(1) } }, { merge: true }).catch(() => { });
-              }
-            })();
+              })();
+            }
           }
         }
 
@@ -903,6 +912,10 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
     document.body.removeChild(link);
   }, [data, nameText, isCompany, companyText, jobTitleText, trackClick, toText]);
 
+  const handlePrintCV = useCallback(() => {
+    window.print();
+  }, []);
+
 
 
   const handleFollowClick = useCallback(() => {
@@ -1096,7 +1109,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
                 className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
               />
             ) : data?.photoUrl ? (
-              <img src={toText(data.photoUrl)} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" alt="Profile" />
+              <img src={toText(data.photoUrl)} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" alt="Profile" fetchpriority="high" />
             ) : (
               <span className="text-4xl font-black text-slate-700">{nameText?.charAt(0) || '?'}</span>
             )}
@@ -1628,8 +1641,15 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
             handleFollowClick={handleFollowClick}
             handleUnfollowClick={handleUnfollowClick}
             setStoryViewerOpen={setStoryViewerOpen}
+            handlePrintCV={handlePrintCV}
           />
         </Suspense>
+        {createPortal(
+            <div id="cv-print-container" className="m-0 p-0 bg-white shadow-none">
+                <ATSCvTemplate data={data} />
+            </div>,
+            document.body
+        )}
         {followModalOpen && <Suspense fallback={null}><FollowModal adminId={profileData.adminId} employeeId={profileData.id} themeColor={themeColor} onClose={() => setFollowModalOpen(false)} onSuccess={handleSmartFollowSuccess} t={t} /></Suspense>}
         {bookingModalOpen && <Suspense fallback={null}><BookingModal adminId={profileData.adminId} employeeId={profileData.id} themeColor={themeColor} onClose={() => setBookingModalOpen(false)} t={t} bookingSettings={profileData.bookingSettings} /></Suspense>}
         {rateModalOpen && (
@@ -1684,6 +1704,24 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
               t={t}
             />
           </Suspense>
+        )}
+        {isLeadFormOpen && (
+          <Suspense fallback={null}>
+            <LeadCaptureModal adminId={profileData.adminId} employeeId={profileData.id} themeColor={themeColor} onClose={() => setIsLeadFormOpen(false)} onSuccess={() => trackClick('exchange_contact')} t={t} initialInterest={leadInterest} />
+          </Suspense>
+        )}
+        {paymentModalOpen && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-end sm:justify-center animate-in fade-in duration-200">
+            <div className="bg-[#0f172a] w-full sm:max-w-md p-6 rounded-t-3xl sm:rounded-3xl border border-slate-800 shadow-2xl space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-white font-bold text-lg">{t.choosePayment}</h3>
+                <button onClick={() => setPaymentModalOpen(false)} className="bg-white/10 p-2 rounded-full text-white"><X size={18} /></button>
+              </div>
+              <div className="space-y-3">
+                <button onClick={() => handlePaymentSelect('cash')} className="w-full py-4 rounded-xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10">{t.cod}</button>
+              </div>
+            </div>
+          </div>
         )}
       </>
     );
@@ -1797,7 +1835,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
                 <div style={{ padding: stories.length > 0 ? '2px' : '0', borderRadius: '50%', background: '#f8fafc' }}>
                   <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200">
                     {data.photoUrl ? (
-                      <img src={toText(data.photoUrl)} className="w-full h-full object-cover" alt={nameText} />
+                      <img src={toText(data.photoUrl)} className="w-full h-full object-cover" alt={nameText} fetchpriority="high" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-base font-black" style={{ background: `${accent}20`, color: accent }}>{nameText?.charAt(0) || '?'}</div>
                     )}
@@ -1907,6 +1945,18 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
                       >
                         <UserPlus size={16} />{t.exchangeContact || 'Save Contact'}
                       </motion.button>
+                      
+                      {data?.showCvOnProfile && (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handlePrintCV}
+                          className="flex-1 min-w-[170px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold shadow-sm border-2 transition-shadow"
+                          style={{ borderColor: accent, color: accent, background: '#fff' }}
+                        >
+                          <FileText size={16} />{L === 'ar' ? 'عرض السيرة الذاتية (CV)' : 'View Resume (CV)'}
+                        </motion.button>
+                      )}
                       {data.bookingUrl !== undefined && (
                         <motion.button
                           whileHover={{ scale: 1.05 }}
@@ -1965,7 +2015,7 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
                         <div style={{ padding: stories.length > 0 ? '4px' : '0', borderRadius: stories.length > 0 ? '50%' : '58% 42% 53% 47% / 43% 53% 47% 57%', background: '#fff', width: '100%', height: '100%' }}>
                           <div className="w-full h-full overflow-hidden" style={{ borderRadius: stories.length > 0 ? '50%' : '58% 42% 53% 47% / 43% 53% 47% 57%' }}>
                             {data.photoUrl ? (
-                              <img src={toText(data.photoUrl)} className="w-full h-full object-cover" alt={nameText} />
+                              <img src={toText(data.photoUrl)} className="w-full h-full object-cover" alt={nameText} fetchpriority="high" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-7xl font-black bg-slate-100 text-slate-400">{nameText?.charAt(0) || '?'}</div>
                             )}
@@ -2063,6 +2113,19 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
         </main>
 
         {isLeadFormOpen && <Suspense fallback={null}><LeadCaptureModal adminId={profileData.adminId} employeeId={profileData.id} themeColor={accent} onClose={() => setIsLeadFormOpen(false)} onSuccess={() => trackClick('exchange_contact')} t={t} initialInterest={leadInterest} /></Suspense>}
+        {paymentModalOpen && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-end sm:justify-center animate-in fade-in duration-200">
+            <div className="bg-[#0f172a] w-full sm:max-w-md p-6 rounded-t-3xl sm:rounded-3xl border border-slate-800 shadow-2xl space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-white font-bold text-lg">{t.choosePayment}</h3>
+                <button onClick={() => setPaymentModalOpen(false)} className="bg-white/10 p-2 rounded-full text-white"><X size={18} /></button>
+              </div>
+              <div className="space-y-3">
+                <button onClick={() => handlePaymentSelect('cash')} className="w-full py-4 rounded-xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10">{t.cod}</button>
+              </div>
+            </div>
+          </div>
+        )}
         {storyViewerOpen && stories.length > 0 && <Suspense fallback={null}><StoryViewer stories={stories} adminId={profileData.adminId} employeeId={profileData.id} onClose={() => setStoryViewerOpen(false)} products={products} trackLead={(type, id) => trackClick(`story_${type}_${id}`)} t={t} /></Suspense>}
         {bookingModalOpen && <Suspense fallback={null}><BookingModal adminId={profileData.adminId} employeeId={profileData.id} themeColor={accent} onClose={() => setBookingModalOpen(false)} t={t} bookingSettings={data?.bookingSettings} /></Suspense>}
         {followModalOpen && <Suspense fallback={null}><FollowModal adminId={profileData.adminId} employeeId={profileData.id} themeColor={accent} onClose={() => setFollowModalOpen(false)} onSuccess={handleSmartFollowSuccess} t={t} /></Suspense>}

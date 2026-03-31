@@ -11,8 +11,11 @@ import {
   Share2
 } from 'lucide-react';
 
+import { useToast } from '../../context/ToastContext';
+
 export default function EmployeeCard({
   employee,
+  userId,
   onDelete,
   onEdit,
   onPreview,
@@ -21,6 +24,7 @@ export default function EmployeeCard({
   lang
 }) {
   const L = (lang || 'ar').toLowerCase() === 'en' ? 'en' : 'ar';
+  const toast = useToast();
 
   const toText = (v) => {
     if (v == null) return '';
@@ -144,8 +148,7 @@ export default function EmployeeCard({
                 }).catch(console.error);
               } else {
                 navigator.clipboard.writeText(url);
-                // Simple visual feedback could be nice, but keeping it standard for now
-                alert(t.linkCopied || "Link copied!");
+                toast.success(t.linkCopied || "Link copied!");
               }
             }}
             className="mb-6 flex items-center justify-between text-xs font-medium text-slate-500 bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-lg cursor-pointer w-full transition-colors group/share"

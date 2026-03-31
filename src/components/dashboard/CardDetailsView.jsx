@@ -13,7 +13,8 @@ import {
     ChevronRight,
     ChevronLeft,
     UserCheck,
-    Star
+    Star,
+    FileText
 } from 'lucide-react';
 
 export default function CardDetailsView({ employee, onBack, t, lang, onAction }) {
@@ -107,6 +108,14 @@ export default function CardDetailsView({ employee, onBack, t, lang, onAction })
             icon: QrCode,
             color: 'text-purple-600',
             bg: 'bg-purple-50'
+        },
+        {
+            id: 'cv',
+            label: t.cvBuilder || 'CV / Resume Builder',
+            desc: t.cvBuilderDesc || 'Create an ATS-friendly CV automatically.',
+            icon: FileText,
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-50'
         },
     ];
 

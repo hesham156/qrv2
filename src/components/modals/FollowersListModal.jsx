@@ -2,28 +2,53 @@ import { collection, onSnapshot, doc, deleteDoc, setDoc, increment } from "fireb
 import { useEffect, useState } from "react";
 import { appId, db } from "../../config/firebase";
 import { Mail, Trash2, X, Users, Download, Send } from "lucide-react";
+import { useToast } from "../../context/ToastContext";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 export default function FollowersListModal({ userId, employee, onClose, t, isEmbedded }) {
   const [followers, setFollowers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const toast = useToast();
+  const [followerToDelete, setFollowerToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     const q = collection(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'followers');
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setFollowers(data);
       setLoading(false);
+
+      // Auto-heal follower stats if out of sync
+      const actualCount = snapshot.docs.length;
+      if (!employee.stats || employee.stats.followers !== actualCount) {
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id);
+          // Use dot notation to safely update only the nested field
+          await setDoc(docRef, { stats: { followers: actualCount } }, { merge: true });
+        } catch (e) {
+          console.error("Auto-sync followers count failed", e);
+        }
+      }
     });
     return () => unsubscribe();
-  }, [userId, employee.id]);
+  }, [userId, employee.id, employee.stats]);
 
-  const handleDelete = async (id) => {
-    if (window.confirm(t.confirmDelete || "Are you sure you want to remove this follower?")) {
-      await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'followers', id));
-      // decrement stats
+  const handleConfirmDelete = async () => {
+    if (!followerToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id, 'followers', followerToDelete.id));
       const docRef = doc(db, 'artifacts', appId, 'users', userId, 'employees', employee.id);
-      await setDoc(docRef, { stats: { followers: increment(-1) } }, { merge: true });
+      // Let the snapshot handle the auto-sync to actual count to avoid race conditions!
+      toast.success(t.deleted || "Follower removed.");
+    } catch (e) {
+      toast.error("Failed to remove follower.");
+    } finally {
+      setIsDeleting(false);
+      setFollowerToDelete(null);
     }
   };
 
@@ -58,10 +83,15 @@ export default function FollowersListModal({ userId, employee, onClose, t, isEmb
   const renderContent = () => {
     if (loading) return <div className="text-center py-12 text-slate-500 font-bold">{t.loading || "Loading..."}</div>;
     if (followers.length === 0) return (
-        <div className="text-center py-16 text-slate-400">
-            <Users size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="font-bold">{t.noFollowers || "No followers yet."}</p>
+      <div className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col items-center justify-center text-center mt-6">
+        <div className="w-16 h-16 bg-blue-50 text-blue-400 flex items-center justify-center rounded-2xl mb-4">
+          <Users size={32} />
         </div>
+        <h4 className="text-lg font-bold text-slate-800 mb-1">{t.noFollowers || "No followers yet"}</h4>
+        <p className="text-sm text-slate-500 max-w-sm mb-6">
+          When people subscribe to your card, they will appear here. You can easily email them updates.
+        </p>
+      </div>
     );
     return (
       <div className="space-y-3">
@@ -77,7 +107,7 @@ export default function FollowersListModal({ userId, employee, onClose, t, isEmb
                   <Mail size={16} />
                 </a>
               )}
-              <button onClick={() => handleDelete(f.id)} className="p-2.5 bg-slate-50 hover:bg-red-50 rounded-xl text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 sm:opacity-100">
+              <button onClick={() => setFollowerToDelete(f)} className="p-2.5 bg-slate-50 hover:bg-red-50 rounded-xl text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 sm:opacity-100">
                   <Trash2 size={16} />
               </button>
             </div>
@@ -145,6 +175,17 @@ export default function FollowersListModal({ userId, employee, onClose, t, isEmb
             {renderContent()}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!followerToDelete}
+        title={t.confirmDeleteTitle || "Remove Follower?"}
+        message={t.confirmDeleteMsg || "Are you sure you want to remove this follower? They will no longer receive your mass updates."}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setFollowerToDelete(null)}
+        isLoading={isDeleting}
+        confirmText={t.deleteBtn || "Remove"}
+        cancelText={t.cancel || "Cancel"}
+      />
     </div>
   );
 }

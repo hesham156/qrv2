@@ -63,7 +63,7 @@ export default function LoginView({ lang, toggleLang, t }) {
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-bold text-slate-700">Password</label>
-            <button type="button" onClick={() => alert("Coming soon!")} className="text-sm text-blue-600 font-semibold hover:underline">Forgot password?</button>
+            <Link to="/forgot-password" className="text-sm text-blue-600 font-semibold hover:underline">Forgot password?</Link>
           </div>
           <input
             type="password"

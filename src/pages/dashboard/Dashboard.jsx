@@ -23,6 +23,8 @@ import { updateDoc } from 'firebase/firestore';
 import { useSEO } from '../../hooks/useSEO';
 import { isItemLocked } from '../../utils/planHelpers';
 import PageTransition from '../../components/ui/PageTransition';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { useToast } from '../../context/ToastContext';
 
 // Lazy Load Modals
 const QRModal = lazy(() => import('../../components/modals/QRModal'));
@@ -34,6 +36,52 @@ const PortfolioManagerModal = lazy(() => import('../../components/modals/Portfol
 const StoriesManagerModal = lazy(() => import('../../components/modals/StoriesManagerModal'));
 const SettingsModal = lazy(() => import('../../components/modals/SettingsModal'));
 const UpgradeModal = lazy(() => import('../../components/modals/UpgradeModal'));
+
+const DashboardEmployeeCardWrapper = React.memo(({
+  employee, userUid, t, lang, isLocked, appId, db,
+  onEdit, onDelete, onManage, setSearchParams, setShowUpgradeModal, itemVariants
+}) => {
+  return (
+    <motion.div variants={itemVariants} className="relative">
+      <EmployeeCard
+        employee={employee}
+        userId={userUid}
+        t={t}
+        lang={lang}
+        onEdit={() => !isLocked && onEdit(employee)}
+        onDelete={() => !isLocked && onDelete(employee)}
+        onManage={() => !isLocked && onManage(employee)}
+        onShowQR={() => !isLocked && setSearchParams({ modal: 'qr', cardId: employee.id })}
+        onShowAnalytics={() => !isLocked && setSearchParams({ modal: 'analytics', cardId: employee.id })}
+        onShowLeads={() => !isLocked && setSearchParams({ modal: 'leads', cardId: employee.id })}
+        onPreview={() => !isLocked && setSearchParams({ modal: 'preview', cardId: employee.id })}
+        onManageProducts={() => !isLocked && setSearchParams({ modal: 'products', cardId: employee.id })}
+        onManageStories={() => !isLocked && setSearchParams({ modal: 'stories', cardId: employee.id })}
+        onManagePortfolio={() => !isLocked && setSearchParams({ modal: 'portfolio', cardId: employee.id })}
+      />
+
+      {isLocked && (
+        <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center text-center p-4 border border-slate-200">
+          <div className="bg-white p-3 rounded-full shadow-lg mb-3">
+            <LogOut className="text-slate-400" size={24} />
+          </div>
+          <h3 className="font-bold text-slate-800 mb-1">{t.planExpiry || "Plan Limit Reached"}</h3>
+          <p className="text-xs text-slate-500 mb-4 max-w-[200px] mx-auto">
+            {t.upgradeMsg || "Upgrade to unlock this card."}
+          </p>
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            className="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-brand-200 transition-all font-mono tracking-wide"
+          >
+            {t.upgradePlan || "Upgrade Plan"}
+          </button>
+        </div>
+      )}
+    </motion.div>
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.employee === nextProps.employee && prevProps.isLocked === nextProps.isLocked && prevProps.lang === nextProps.lang;
+});
 
 export default function Dashboard({ user, onLogout, lang, toggleLang, t, installPrompt, onInstall }) {
   useSEO("Dashboard", "Manage your digital business cards and analyze performance.");
@@ -66,15 +114,21 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
   const [currentView, setCurrentView] = useState('cards'); // 'cards', 'analytics', 'leads', 'products', 'card_details', 'apps'
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isEmployeesLoading, setIsEmployeesLoading] = useState(true);
+
+  // New states for Toast and Confirm
+  const toast = useToast();
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    // Show onboarding if no employees and not skipped
-    if (employees.length === 0 && !user?.hasSkippedOnboarding && !permissionError) {
+    // Show onboarding if no employees and not skipped and NOT loading
+    if (!isEmployeesLoading && employees.length === 0 && !user?.hasSkippedOnboarding && !permissionError) {
       setShowOnboarding(true);
     } else {
       setShowOnboarding(false);
     }
-  }, [employees.length, user?.hasSkippedOnboarding, permissionError]);
+  }, [employees.length, user?.hasSkippedOnboarding, permissionError, isEmployeesLoading]);
 
   const handleSkipOnboarding = async () => {
     setShowOnboarding(false);
@@ -99,12 +153,14 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
         const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
         docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
         setEmployees(docs)
+        setIsEmployeesLoading(false)
       },
       (error) => {
         console.error("Error fetching employees:", error)
         if (error.code === "permission-denied") {
           setPermissionError(true)
         }
+        setIsEmployeesLoading(false)
       },
     )
 
@@ -197,23 +253,34 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
     }
   };
 
-  const handleEdit = (employee) => setSearchParams({ modal: 'edit', cardId: employee.id });
+  const handleEdit = React.useCallback((employee) => setSearchParams({ modal: 'edit', cardId: employee.id }), [setSearchParams]);
 
-  // New Handler for Managing Card (Deep Dive)
-  const handleManageCard = (employee) => {
-    // Navigate to dedicated route
-    // Since we are in Dashboard, we can use navigation
-    // But Dashboard is lazily loaded... Wait, we are in Dashboard.jsx.
-    // We need useNavigate.
-    // Let's add useNavigate hook at top.
+  const handleDeleteRequest = React.useCallback((employee) => {
+    setEmployeeToDelete(employee);
+  }, []);
 
-    // Actually, simpler:
-    window.location.href = `/dashboard/card/${employee.id}`;
-    // Or prefer SPA navigation if possible, but Dashboard code needs refactor to import useNavigate.
-    // Let's assume we can just redirect for now or refactor to use hook.
+  const handleConfirmDelete = async () => {
+    if (!employeeToDelete) return;
+    setIsDeleting(true);
+    try {
+      if (employeeToDelete.slug) await deleteDoc(doc(db, "artifacts", appId, "public", "data", "slugs", employeeToDelete.slug));
+      await deleteDoc(doc(db, "artifacts", appId, "users", user.uid, "employees", employeeToDelete.id));
+      toast.success(t.deleteSuccess || "Card deleted successfully.");
+      setEmployeeToDelete(null);
+    } catch (e) {
+      console.error(e);
+      toast.error(t.deleteError || "Error deleting card.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  const handleBackToDashboard = () => setSearchParams({});
+  // New Handler for Managing Card (Deep Dive)
+  const handleManageCard = React.useCallback((employee) => {
+    window.location.href = `/dashboard/card/${employee.id}`;
+  }, []);
+
+  const handleBackToDashboard = React.useCallback(() => setSearchParams({}), [setSearchParams]);
 
   const handleAddNew = () => {
     // Subscription Limit Check
@@ -278,7 +345,11 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
             </div>
           )}
 
-          {employees.length === 0 && !permissionError ? (
+          {isEmployeesLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
+            </div>
+          ) : employees.length === 0 && !permissionError ? (
             <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-300 shadow-soft">
               <div className="w-20 h-20 bg-brand-50 text-brand-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-glow animate-float">
                 <UserPlus size={40} strokeWidth={1.5} />
@@ -305,52 +376,22 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
               {employees.filter(emp => !emp.hidden).map((employee, index) => {
                 const isLocked = isItemLocked(index, user);
                 return (
-                  <motion.div variants={itemVariants} key={employee.id} className="relative">
-                    <EmployeeCard
-                      employee={employee}
-                      userId={user.uid}
-                      t={t}
-                      lang={lang}
-                      onDelete={() => {
-                        // Delete logic remains direct as it's not a modal
-                        if (window.confirm(t.deleteConfirm)) {
-                          (async () => {
-                            try {
-                              if (employee.slug) await deleteDoc(doc(db, "artifacts", appId, "public", "data", "slugs", employee.slug));
-                              await deleteDoc(doc(db, "artifacts", appId, "users", user.uid, "employees", employee.id));
-                            } catch (e) { console.error(e); window.alert(t.deleteError); }
-                          })();
-                        }
-                      }}
-                      onEdit={() => !isLocked && handleEdit(employee)}
-                      onManage={() => !isLocked && handleManageCard(employee)} // New Prop
-                      onShowQR={() => !isLocked && setSearchParams({ modal: 'qr', cardId: employee.id })}
-                      onShowAnalytics={() => !isLocked && setSearchParams({ modal: 'analytics', cardId: employee.id })}
-                      onShowLeads={() => !isLocked && setSearchParams({ modal: 'leads', cardId: employee.id })}
-                      onPreview={() => !isLocked && setSearchParams({ modal: 'preview', cardId: employee.id })}
-                      onManageProducts={() => !isLocked && setSearchParams({ modal: 'products', cardId: employee.id })}
-                      onManageStories={() => !isLocked && setSearchParams({ modal: 'stories', cardId: employee.id })}
-                      onManagePortfolio={() => !isLocked && setSearchParams({ modal: 'portfolio', cardId: employee.id })}
-                    />
-
-                    {isLocked && (
-                      <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 rounded-2xl flex flex-col items-center justify-center text-center p-4 border border-slate-200">
-                        <div className="bg-white p-3 rounded-full shadow-lg mb-3">
-                          <LogOut className="text-slate-400" size={24} />
-                        </div>
-                        <h3 className="font-bold text-slate-800 mb-1">{t.planExpiry || "Plan Limit Reached"}</h3>
-                        <p className="text-xs text-slate-500 mb-4 max-w-[200px] mx-auto">
-                          {t.upgradeMsg || "Upgrade to unlock this card."}
-                        </p>
-                        <button
-                          onClick={() => setShowUpgradeModal(true)}
-                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:bg-indigo-700 transition-colors"
-                        >
-                          {t.upgradeBtn || "Upgrade Now"}
-                        </button>
-                      </div>
-                    )}
-                  </motion.div>
+                  <DashboardEmployeeCardWrapper
+                    key={employee.id}
+                    employee={employee}
+                    userUid={user.uid}
+                    t={t}
+                    lang={lang}
+                    isLocked={isLocked}
+                    appId={appId}
+                    db={db}
+                    onEdit={handleEdit}
+                    onDelete={handleDeleteRequest}
+                    onManage={handleManageCard}
+                    setSearchParams={setSearchParams}
+                    itemVariants={itemVariants}
+                    setShowUpgradeModal={setShowUpgradeModal}
+                  />
                 );
               })}
             </motion.div>
@@ -501,6 +542,17 @@ export default function Dashboard({ user, onLogout, lang, toggleLang, t, install
           onSkip={handleSkipOnboarding}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!employeeToDelete}
+        title={t.deleteConfirmTitle || "Delete Card?"}
+        message={t.deleteConfirmMsg || "Are you sure you want to delete this card? This action is permanent."}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setEmployeeToDelete(null)}
+        isLoading={isDeleting}
+        confirmText={t.deleteBtn || "Delete"}
+        cancelText={t.cancel || "Cancel"}
+      />
 
     </DashboardLayout>
   )

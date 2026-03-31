@@ -17,6 +17,7 @@ import StoryAnalyticsModal from '../../components/modals/StoryAnalyticsModal';
 import QRCodeManagerModal from '../../components/modals/QRCodeManagerModal';
 import BrandedLoader from '../../components/ui/BrandedLoader';
 import SettingsModal from '../../components/modals/SettingsModal';
+import CVManagerModal from '../../components/modals/CVManagerModal';
 
 // Lazy load specific heavy modals if needed, but for embedded dashboard we might want them eager or mostly eager
 // For now, importing eager is safer for layout consistency.
@@ -83,6 +84,7 @@ export default function SingleCardDashboard({ user, t, lang, onLogout, toggleLan
                                 else if (actionId === 'qr') navigate('qr');
                                 else if (actionId === 'appointments') navigate('appointments');
                                 else if (actionId === 'storyanalytics') navigate('story-analytics');
+                                else if (actionId === 'cv') navigate('cv-builder');
                             }}
                         />
                     } />
@@ -242,6 +244,17 @@ export default function SingleCardDashboard({ user, t, lang, onLogout, toggleLan
                     {/* Story Analytics */}
                     <Route path="story-analytics" element={
                         <StoryAnalyticsModal
+                            isEmbedded={true}
+                            employee={employee}
+                            userId={user.uid}
+                            t={t}
+                            onClose={() => navigate('..')}
+                        />
+                    } />
+
+                    {/* CV Builder */}
+                    <Route path="cv-builder" element={
+                        <CVManagerModal
                             isEmbedded={true}
                             employee={employee}
                             userId={user.uid}
