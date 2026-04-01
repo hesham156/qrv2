@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { collectionGroup, getDocs, query, where, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import LandingLayout from '../../layouts/LandingLayout';
-import { ArrowRight, Smartphone, Share2, BarChart3, CheckCircle2, Zap, Shield, Globe, Briefcase, User } from 'lucide-react';
+import { ArrowRight, Smartphone, Share2, BarChart3, CheckCircle2, Zap, Shield, Globe, Briefcase } from 'lucide-react';
 import { useSEO } from '../../hooks/useSEO';
 
 export default function Home({ lang, toggleLang, t }) {
