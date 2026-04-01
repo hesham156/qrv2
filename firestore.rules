@@ -22,6 +22,11 @@ service cloud.firestore {
 
     // --- Rules ---
 
+    // 0. Global Collection Group Queries
+    match /{path=**}/employees/{empId} {
+      allow read: if true;
+    }
+
     // 1. Slugs (Public Read, Auth Write)
     // Used to look up which user/card owns a slug
     match /artifacts/{appId}/public/data/slugs/{slug} {

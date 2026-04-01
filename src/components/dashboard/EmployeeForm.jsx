@@ -52,6 +52,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
     seoTitle: '',
     seoDescription: '',
     seoImage: '',
+    showOnLanding: false,
     bookingSettings: {
       days: [0, 1, 2, 3, 4], // Sun-Thu default
       start: '09:00',
@@ -111,6 +112,7 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
         seoTitle: initialData.seoTitle || '',
         seoDescription: initialData.seoDescription || '',
         seoImage: initialData.seoImage || '',
+        showOnLanding: initialData.showOnLanding || false,
         bookingUrl: initialData.bookingUrl || '',
         bookingSettings: initialData.bookingSettings || {
           days: [0, 1, 2, 3, 4],
@@ -582,6 +584,24 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
                 />
                 {domainError && <p className="text-xs text-red-500 mt-2 font-bold flex items-center gap-1"><X size={12} />{domainError}</p>}
               </div>
+
+              {/* Show on Landing Page */}
+              <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 hover:border-blue-200 transition-colors">
+                <div className="pr-4">
+                  <h4 className="font-bold text-slate-800 text-sm">{t?.ar ? "عرض في الصفحة الرئيسية" : "Show on Landing Page"}</h4>
+                  <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{t?.ar ? "اسمح بظهور بطاقتك في معرض البطاقات المميزة بالصفحة الرئيسية." : "Allow your card to appear in the featured showcase on the homepage."}</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={formData.showOnLanding || false}
+                    onChange={(e) => setFormData({ ...formData, showOnLanding: e.target.checked })}
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
             </div>
           )}
 

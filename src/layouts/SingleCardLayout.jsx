@@ -107,7 +107,7 @@ export default function SingleCardLayout({ t, lang, employee, user, onLogout, to
                 <motion.aside
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="w-full md:w-64 shrink-0 space-y-2 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm h-fit self-start sticky top-24"
+                    className="w-full md:w-64 shrink-0 bg-white rounded-2xl border border-slate-200 p-3 md:p-4 shadow-sm md:h-fit md:self-start md:sticky md:top-24 flex flex-row md:flex-col gap-2 overflow-x-auto hide-scrollbar z-20"
                 >
                     {/* Removed Back Link from Sidebar as it's now in Header */}
 
@@ -119,7 +119,7 @@ export default function SingleCardLayout({ t, lang, employee, user, onLogout, to
                                 to={item.path}
                                 end={item.id === 'overview'}
                                 className={({ isActive }) => `
-                flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm
+                flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm whitespace-nowrap shrink-0
                 ${isActive
                                         ? 'bg-slate-900 text-white shadow-md'
                                         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'

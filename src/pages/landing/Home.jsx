@@ -1,6 +1,9 @@
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { collectionGroup, getDocs, query, where, limit } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import LandingLayout from '../../layouts/LandingLayout';
-import { ArrowRight, Smartphone, Share2, BarChart3, CheckCircle2, Zap, Shield, Globe } from 'lucide-react';
+import { ArrowRight, Smartphone, Share2, BarChart3, CheckCircle2, Zap, Shield, Globe, Briefcase, User } from 'lucide-react';
 import { useSEO } from '../../hooks/useSEO';
 
 export default function Home({ lang, toggleLang, t }) {
@@ -8,6 +11,37 @@ export default function Home({ lang, toggleLang, t }) {
 
     const tr = t || {};
     const isRtl = lang === 'ar';
+
+    const [realCards, setRealCards] = useState([]);
+    const [loadingCards, setLoadingCards] = useState(true);
+
+    useEffect(() => {
+        const fetchCards = async () => {
+            try {
+                const employeesQuery = query(
+                    collectionGroup(db, 'employees'),
+                    where('showOnLanding', '==', true),
+                    limit(8)
+                );
+                
+                const querySnapshot = await getDocs(employeesQuery);
+                const cardsData = [];
+                querySnapshot.forEach((doc) => {
+                    cardsData.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Shuffle array lightly if we want varied results without ordering
+                const shuffled = cardsData.sort(() => 0.5 - Math.random());
+                setRealCards(shuffled.slice(0, 4)); // Only show top 4
+            } catch (error) {
+                console.error("Error fetching featured cards:", error);
+            } finally {
+                setLoadingCards(false);
+            }
+        };
+
+        fetchCards();
+    }, []);
 
     const features = [
         {
@@ -210,6 +244,117 @@ export default function Home({ lang, toggleLang, t }) {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── SHOWCASE / DIRECTORY SECTION ── */}
+            <section className="py-24 bg-white relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
+                
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-16">
+                        <div className="inline-block bg-violet-100 text-violet-700 text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full mb-5">
+                            {isRtl ? "معرض البطاقات" : "Card Showcase"}
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-5 tracking-tight">
+                            {isRtl ? "تصفح البطاقات والوظائف" : "Explore Cards & Professions"}
+                        </h2>
+                        <p className="text-slate-500 text-lg max-w-2xl mx-auto font-medium leading-relaxed">
+                            {isRtl 
+                                ? "استكشف مجموعة من البطاقات الرقمية المميزة لمختلف التخصصات والمجالات المهنية." 
+                                : "Discover a variety of featured digital cards across different specialties and industries."}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {loadingCards ? (
+                            // Loading Skeletons
+                            [...Array(4)].map((_, idx) => (
+                                <div key={idx} className="bg-slate-50 border border-slate-100 rounded-3xl h-64 animate-pulse"></div>
+                            ))
+                        ) : (realCards.length > 0 ? realCards : [
+                            // Fallback mock cards if DB is empty
+                            {
+                                name: isRtl ? "أحمد سليمان" : "Ahmed Soliman",
+                                jobTitle: isRtl ? "مطور برمجيات" : "Software Engineer",
+                                themeIndex: 0,
+                                isMock: true
+                            },
+                            {
+                                name: isRtl ? "سارة خالد" : "Sarah Khalid",
+                                jobTitle: isRtl ? "مديرة تسويق" : "Marketing Manager",
+                                themeIndex: 1,
+                                isMock: true
+                            },
+                            {
+                                name: isRtl ? "د. محمد رضا" : "Dr. Mohamad Reda",
+                                jobTitle: isRtl ? "طبيب أسنان" : "Dentist",
+                                themeIndex: 2,
+                                isMock: true
+                            },
+                            {
+                                name: isRtl ? "نورة العلي" : "Noura Al-Ali",
+                                jobTitle: isRtl ? "مصممة جرافيك" : "Graphic Designer",
+                                themeIndex: 3,
+                                isMock: true
+                            }
+                        ]).map((card, idx) => {
+                            const nameText = isRtl 
+                                ? (card.name_ar || card.name) 
+                                : (card.name_en || card.name);
+                            const jobText = isRtl 
+                                ? (card.jobTitle_ar || card.jobTitle) 
+                                : (card.jobTitle_en || card.jobTitle);
+                            
+                            const initial = nameText ? nameText.charAt(0).toUpperCase() : '?';
+                            const linkPath = card.isMock ? "#" : (card.slug ? `/${card.slug}` : `/p/${card.id}`);
+
+                            // Cycle through beautiful themes based on index or card property
+                            const themes = [
+                                { gradient: "from-blue-500 to-indigo-600", text: "text-blue-600", bg: "bg-blue-50" },
+                                { gradient: "from-violet-500 to-purple-600", text: "text-violet-600", bg: "bg-violet-50" },
+                                { gradient: "from-emerald-400 to-teal-500", text: "text-emerald-600", bg: "bg-emerald-50" },
+                                { gradient: "from-pink-500 to-rose-500", text: "text-pink-600", bg: "bg-pink-50" },
+                                { gradient: "from-amber-400 to-orange-500", text: "text-amber-600", bg: "bg-amber-50" }
+                            ];
+                            const theme = themes[card.themeIndex !== undefined ? card.themeIndex : (idx % themes.length)];
+
+                            return (
+                                <Link to={linkPath} key={card.id || idx} className="group relative bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 flex flex-col block">
+                                    <div className={`h-24 bg-gradient-to-r ${theme.gradient} opacity-90 group-hover:opacity-100 transition-opacity`}></div>
+                                    <div className="px-6 pb-6 flex-1 flex flex-col relative">
+                                        <div className="absolute -top-10 left-6 w-20 h-20 bg-white rounded-2xl shadow-md p-1 flex items-center justify-center transform group-hover:scale-105 transition-transform rotate-3 overflow-hidden">
+                                            {card.photoUrl ? (
+                                                <img src={card.photoUrl} alt={nameText} className="w-full h-full object-cover rounded-xl -rotate-3" />
+                                            ) : (
+                                                <div className={`w-full h-full rounded-xl bg-gradient-to-br ${theme.gradient} flex items-center justify-center text-white font-black text-2xl -rotate-3`}>
+                                                    {initial}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="mt-14">
+                                            <h3 className="text-xl font-black text-slate-800 tracking-tight line-clamp-1">{nameText || 'No Name'}</h3>
+                                            <p className={`font-bold text-sm ${theme.text} mt-1 flex items-center gap-1.5 line-clamp-1`}>
+                                                <Briefcase size={14} className="shrink-0" />
+                                                <span className="truncate">{jobText || (isRtl ? 'لا يوجد المسمى الوظيفي' : 'No Title')}</span>
+                                            </p>
+                                        </div>
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {(card.tags || ["#Pro", "#Verified"]).map((tStr) => (
+                                                <span key={tStr} className={`text-[10px] font-bold px-2.5 py-1 rounded-md ${theme.bg} ${theme.text}`}>
+                                                    {tStr}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span className="text-xs font-bold text-slate-500">{isRtl ? "مشاهدة البطاقة" : "View Card"}</span>
+                                        <ArrowRight size={14} className={`text-slate-400 ${isRtl ? 'rotate-180' : ''}`} />
+                                    </div>
+                                </Link>
+                            )
+                        })}
                     </div>
                 </div>
             </section>
