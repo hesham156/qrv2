@@ -4,7 +4,8 @@ import { collection, addDoc, doc, getDoc, deleteDoc, updateDoc, serverTimestamp,
 import { uploadToWordPress } from "../../services/wordpressStorage";
 import { extractTextFromPDF, parseCVWithAI } from "../../services/cvParser";
 import { optimizeTextWithAI } from "../../services/aiService";
-import { appId, db } from "../../config/firebase";
+import { appId, db, functions } from "../../config/firebase";
+import { httpsCallable } from "firebase/functions";
 import {
   Phone, Mail, Share2, Image as ImageIcon, Briefcase, Activity, Upload, Type, Wand, Search,
   Building2, Crown, LayoutTemplate, Link, Palette, User, X, Globe, ShieldCheck, Edit, CheckCircle, XCircle
@@ -279,14 +280,36 @@ export default function EmployeeForm({ onClose, initialData, userId, user, t, is
       if (finalData.customDomain && finalData.customDomain !== oldDomain) {
         if (oldDomain) {
           await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'domains', oldDomain.replace(/\./g, '_')));
+          // Remove from Vercel
+          try {
+            const removeDomainCallable = httpsCallable(functions, 'removeCustomDomainFromVercel');
+            await removeDomainCallable({ customDomain: oldDomain });
+          } catch (e) {
+            console.error("Failed to remove old domain from Vercel", e);
+          }
         }
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'domains', finalData.customDomain.replace(/\./g, '_')), {
           targetUid: userId,
           targetEmpId: empId,
           domain: finalData.customDomain
         });
+        // Add to Vercel
+        try {
+          const addDomainCallable = httpsCallable(functions, 'addCustomDomainToVercel');
+          await addDomainCallable({ customDomain: finalData.customDomain });
+        } catch (e) {
+          console.error("Failed to add new domain to Vercel", e);
+          showToast(t.vercelError || "Domain saved, but linking failed. Please check setup.", "error");
+        }
       } else if (!finalData.customDomain && oldDomain) {
         await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'domains', oldDomain.replace(/\./g, '_')));
+        // Remove from Vercel
+        try {
+          const removeDomainCallable = httpsCallable(functions, 'removeCustomDomainFromVercel');
+          await removeDomainCallable({ customDomain: oldDomain });
+        } catch (e) {
+          console.error("Failed to remove domain from Vercel", e);
+        }
       }
 
 

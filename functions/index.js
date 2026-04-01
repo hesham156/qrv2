@@ -196,3 +196,82 @@ exports.createGoogleMeeting = onCall({
         throw new HttpsError("internal", "Failed to create Google Meet meeting.");
     }
 });
+
+/**
+ * Add a custom domain to Vercel via API.
+ */
+exports.addCustomDomainToVercel = onCall({
+    maxInstances: 10
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be logged in.");
+    }
+
+    const { customDomain } = request.data;
+    if (!customDomain) {
+        throw new HttpsError("invalid-argument", "Missing domain name.");
+    }
+
+    const VERCEL_PROJECT_ID = process.env.VERCEL_PROJECT_ID;
+    const VERCEL_AUTH_TOKEN = process.env.VERCEL_AUTH_TOKEN;
+
+    if (!VERCEL_PROJECT_ID || !VERCEL_AUTH_TOKEN) {
+        throw new HttpsError("failed-precondition", "Vercel API keys are not configured.");
+    }
+
+    try {
+        const response = await axios.post(
+            `https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/domains`,
+            { name: customDomain },
+            {
+                headers: {
+                    Authorization: `Bearer ${VERCEL_AUTH_TOKEN}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+        return { success: true, data: response.data };
+    } catch (error) {
+        console.error("Vercel Add Error:", error.response?.data || error.message);
+        throw new HttpsError("internal", error.response?.data?.error?.message || "Failed to add domain to Vercel.");
+    }
+});
+
+/**
+ * Remove a custom domain from Vercel via API.
+ */
+exports.removeCustomDomainFromVercel = onCall({
+    maxInstances: 10
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be logged in.");
+    }
+
+    const { customDomain } = request.data;
+    if (!customDomain) {
+        throw new HttpsError("invalid-argument", "Missing domain name.");
+    }
+
+    const VERCEL_PROJECT_ID = process.env.VERCEL_PROJECT_ID;
+    const VERCEL_AUTH_TOKEN = process.env.VERCEL_AUTH_TOKEN;
+
+    if (!VERCEL_PROJECT_ID || !VERCEL_AUTH_TOKEN) {
+        throw new HttpsError("failed-precondition", "Vercel API keys are not configured.");
+    }
+
+    try {
+        const response = await axios.delete(
+            `https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}/domains/${customDomain}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${VERCEL_AUTH_TOKEN}`
+                }
+            }
+        );
+        return { success: true, data: response.data };
+    } catch (error) {
+        // If domain is not found, we don't necessarily want to fail fully, but we log it.
+        console.error("Vercel Remove Error:", error.response?.data || error.message);
+        throw new HttpsError("internal", error.response?.data?.error?.message || "Failed to remove domain from Vercel.");
+    }
+});
