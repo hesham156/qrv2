@@ -40,6 +40,8 @@ export default function EmployeeCardTemplate({
     ? (reviews.reduce((acc, curr) => acc + (curr.stars || 0), 0) / reviews.length).toFixed(1) 
     : null;
 
+  const bioText = L === 'en' ? (data?.bio_en || data?.bio || data?.bio_ar) : (data?.bio_ar || data?.bio || data?.bio_en);
+
   return (
     <div 
       className="min-h-[90vh] bg-slate-100 flex flex-col items-center py-10 px-4"
@@ -131,9 +133,9 @@ export default function EmployeeCardTemplate({
                   {safeText(data.jobTitle)}
                 </p>
               )}
-              {data?.bio && (
+              {bioText && (
                 <div className="bg-slate-50 text-slate-600 text-[13px] p-4 rounded-xl leading-relaxed shadow-inner border border-slate-100 mb-4 mx-2 overflow-y-auto max-h-20 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  {safeText(data.bio)}
+                  {safeText(bioText)}
                 </div>
               )}
 

@@ -337,13 +337,14 @@ export default function ProfileView({ data: profileData, user, lang, toggleLang,
 
   const nameText = pick(data?.name_ar, data?.name_en, data?.name);
   const jobTitleText = pick(data?.jobTitle_ar, data?.jobTitle_en, data?.jobTitle);
+  const bioText = pick(data?.bio_ar, data?.bio_en, data?.bio);
   const companyText = toText(data?.company);
   const isCompany = data?.profileType === 'company';
 
   // Custom SEO Hook
   useSEO(
     data?.seoTitle || nameText,
-    data?.seoDescription || data?.bio_ar || data?.bio_en || jobTitleText,
+    data?.seoDescription || bioText || jobTitleText,
     data?.seoImage || data?.photoUrl
   );
 
@@ -2229,6 +2230,12 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
                 {companyText && <span className="w-1 h-1 rounded-full" style={{ backgroundColor: tpl.textSecondary }} />}
                 {companyText}
               </p>
+
+              {bioText && (
+                <p className="mt-4 px-6 text-sm leading-relaxed whitespace-pre-wrap drop-shadow-sm" style={{ color: tpl.textSecondary }}>
+                  {bioText}
+                </p>
+              )}
 
               {/* Stats Grid */}
               <div className="flex items-center justify-center gap-3 mt-6">

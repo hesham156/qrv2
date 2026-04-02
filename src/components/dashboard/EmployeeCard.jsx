@@ -134,12 +134,11 @@ export default function EmployeeCard({
         </div>
 
         {/* Slug / Link (Bottom) */}
-        {/* Slug / Link (Bottom) */}
         {employee?.slug && (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const url = `${window.location.origin}/${employee.slug}`;
+              const url = employee?.customDomain ? `https://${employee.customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')}` : `${window.location.origin}/${employee.slug}`;
               if (navigator.share) {
                 navigator.share({
                   title: nameText,
@@ -154,7 +153,9 @@ export default function EmployeeCard({
             className="mb-6 flex items-center justify-between text-xs font-medium text-slate-500 bg-slate-50 hover:bg-slate-100 px-3 py-2 rounded-lg cursor-pointer w-full transition-colors group/share"
             title={t.share || "Share Link"}
           >
-            <span className="truncate flex-1 font-mono text-slate-600 text-left">/{employee.slug}</span>
+            <span className="truncate flex-1 font-mono text-slate-600 text-left" dir="ltr">
+              {employee?.customDomain ? employee.customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '') : `/${employee.slug}`}
+            </span>
             <Share2 size={14} className="text-slate-400 group-hover/share:text-brand-600 transition-colors" />
           </button>
         )}

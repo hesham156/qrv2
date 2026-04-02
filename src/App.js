@@ -9,6 +9,7 @@ import PageTransition from './components/ui/PageTransition';
 import BrandedLoader from './components/ui/BrandedLoader';
 import { AnimatePresence } from 'framer-motion';
 import { ToastProvider } from './context/ToastContext';
+import InstallAppBanner from './components/common/InstallAppBanner';
 
 // Lazy Load Pages
 const LoginView = lazy(() => import('./pages/auth/LoginView'));
@@ -73,7 +74,7 @@ const ProtectedRoute = ({ user, children }) => {
 };
 
 // --- Profile Route Wrapper (Handles Slugs & IDs) ---
-function ProfileRoute({ user, lang, toggleLang, t }) {
+function ProfileRoute({ user, lang, toggleLang, t, installPrompt }) {
   const { slug } = useParams();
   const location = useLocation();
   const [profileData, setProfileData] = useState(null);
@@ -133,7 +134,7 @@ function ProfileRoute({ user, lang, toggleLang, t }) {
   return (
     <Suspense fallback={<ProfileSkeleton />}>
       <PageTransition>
-        <ProfileView data={profileData} user={user} lang={lang} toggleLang={toggleLang} t={t} />
+        <ProfileView data={profileData} user={user} lang={lang} toggleLang={toggleLang} t={t} installPrompt={installPrompt} />
       </PageTransition>
     </Suspense>
   );
@@ -254,6 +255,7 @@ export default function App() {
           {(installPrompt, location) => {
             return (
               <Suspense fallback={<PageLoader />}>
+                <InstallAppBanner installPrompt={installPrompt} lang={lang} />
                 <AnimatePresence mode="wait">
                   <Routes location={location} key={location.pathname}>
                     {/* Marketing Pages */}
@@ -312,10 +314,10 @@ export default function App() {
                     <Route path="/tracker/:uid/:tid" element={<PageTransition><TrackerPage /></PageTransition>} />
 
                     {/* Profile Routes */}
-                    <Route path="/p/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
-                    <Route path="/profile" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
+                    <Route path="/p/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} installPrompt={installPrompt} />} />
+                    <Route path="/profile" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} installPrompt={installPrompt} />} />
                     {/* Root Slug Catch-all - Must be last before * */}
-                    <Route path="/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} />} />
+                    <Route path="/:slug" element={<ProfileRoute user={user} lang={lang} toggleLang={toggleLang} t={t} installPrompt={installPrompt} />} />
 
 
                     {/* Fallback for legacy hash routes or 404 */}

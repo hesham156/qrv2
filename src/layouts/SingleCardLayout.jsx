@@ -147,7 +147,14 @@ export default function SingleCardLayout({ t, lang, employee, user, onLogout, to
                         </div>
 
                         <button
-                            onClick={() => window.open(`/${employee?.slug || employee?.id}`, '_blank')}
+                            onClick={() => {
+                                if (employee?.customDomain) {
+                                    const domain = employee.customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+                                    window.open(`https://${domain}`, '_blank');
+                                } else {
+                                    window.open(`/${employee?.slug || employee?.id}`, '_blank');
+                                }
+                            }}
                             className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-slate-800 transition-colors"
                         >
                             <Eye size={16} />
