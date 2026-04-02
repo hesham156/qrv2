@@ -12,16 +12,15 @@ export default function AuthLayout({ children, title, subtitle }) {
                 <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2"></div>
 
                 <div className="relative z-10">
-                    <Link to="/" className="text-2xl font-bold flex items-center gap-2">
-                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-blue-600 font-bold">D</div>
-                        Get In Click
+                    <Link to="/" className="text-2xl font-bold flex items-center justify-center gap-2">
+                        <img src="/logo192.png" alt="Logo" className="h-24 w-auto object-contain brightness-0 invert" />
                     </Link>
                 </div>
 
                 <div className="relative z-10 max-w-lg">
                     <Quote className="text-blue-300 mb-6 w-10 h-10" />
                     <h2 className="text-4xl font-bold leading-tight mb-8">
-                        "DigiCard transformed how we connect. It's the modern way to do business."
+                        "getin.click transformed how we connect. It's the modern way to do business."
                     </h2>
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-blue-400"></div>
@@ -41,7 +40,9 @@ export default function AuthLayout({ children, title, subtitle }) {
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
                 <div className="w-full max-w-md">
                     <div className="text-center mb-8 lg:text-left">
-                        <Link to="/" className="lg:hidden inline-block text-2xl font-bold text-blue-600 mb-8">DigiCard</Link>
+                        <Link to="/" className="lg:hidden flex items-center justify-center gap-2 text-2xl font-bold text-blue-600 mb-8">
+                           <img src="/logo192.png" alt="Logo" className="h-24 w-auto object-contain" />
+                        </Link>
                         <h1 className="text-3xl font-bold text-slate-900 mb-2">{title}</h1>
                         <p className="text-slate-500">{subtitle}</p>
                     </div>

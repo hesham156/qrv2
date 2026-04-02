@@ -57,12 +57,9 @@ export default function Sidebar({
       `}>
 
                 {/* Logo Area */}
-                <div className="h-20 flex items-center justify-between px-8">
+                <div className="h-32 flex items-center justify-center px-8">
                     <div className="flex items-center gap-3 font-bold text-2xl tracking-tight text-slate-800">
-                        <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-200">
-                            <LayoutDashboard size={22} strokeWidth={2.5} />
-                        </div>
-                        <span>DigiCard</span>
+                        <img src="/logo192.png" alt="Logo" className="h-24 w-auto object-contain" />
                     </div>
                     <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-slate-600 transition-colors bg-slate-50 p-2 rounded-lg">
                         <X size={20} />

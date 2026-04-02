@@ -31,17 +31,20 @@ const BrandedLoader = () => {
                         className="w-full h-full border-4 border-slate-200 border-t-blue-600 rounded-full"
                     />
 
-                    {/* Inner pulsating dot */}
-                    <motion.div
+                    {/* Inner pulsating logo */}
+                    <motion.img
+                        src="/logo192.png"
+                        alt="Loading"
                         animate={{
-                            scale: [0.8, 1.1, 0.8],
+                            scale: [0.8, 1, 0.8],
+                            rotate: [0, 5, -5, 0]
                         }}
                         transition={{
-                            duration: 1,
+                            duration: 2,
                             repeat: Infinity,
                             ease: "easeInOut",
                         }}
-                        className="absolute inset-0 m-auto w-4 h-4 bg-blue-600 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.5)]"
+                        className="absolute inset-0 m-auto w-24 h-24 object-contain drop-shadow-[0_0_10px_rgba(37,99,235,0.3)]"
                     />
                 </div>
             </div>

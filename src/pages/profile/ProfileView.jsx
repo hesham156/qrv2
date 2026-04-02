@@ -1820,7 +1820,10 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
             </motion.div>
           )}
 
-          <motion.div variants={itemVariants} className="mt-auto text-[9px] text-slate-400 text-center px-2">Powered by DigiCard</motion.div>
+          <motion.div variants={itemVariants} className="mt-auto text-[11px] text-slate-400 flex flex-col items-center justify-center gap-4 px-2 py-8">
+            <span className="font-black tracking-[0.2em] uppercase opacity-30">Powered by</span>
+            <img src="/logo192.png" className="h-24 object-contain grayscale opacity-60" alt="Logo" />
+          </motion.div>
         </motion.aside>
 
         {/* ---- MAIN CONTENT ---- */}
@@ -2285,10 +2288,11 @@ ${data.email ? `EMAIL:${toText(data.email)}\n` : ''}${title ? `TITLE;CHARSET=UTF
           </div>
 
           <div
-            className="mt-auto py-6 text-center text-[10px] font-bold uppercase tracking-widest backdrop-blur-md border-t"
+            className="mt-auto py-16 text-center flex flex-col items-center justify-center gap-6 text-xs font-black uppercase tracking-[0.3em] backdrop-blur-md border-t"
             style={{ background: tpl.footerBg, borderColor: tpl.footerBorder, color: tpl.footerText }}
           >
-            Powered by DigiCard
+            <span className="opacity-40">Powered by</span>
+            <img src="/logo192.png" className="h-24 object-contain" alt="Logo" />
           </div>
 
         </div>

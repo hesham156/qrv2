@@ -153,7 +153,7 @@ export default function Home({ lang, toggleLang, t }) {
                                     <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
                                 </div>
                                 <div className="flex-1 bg-white border border-slate-200 rounded-lg h-7 mx-4 flex items-center px-3">
-                                    <span className="text-slate-400 text-xs font-medium tracking-wide">digicard.app/your-name</span>
+                                    <span className="text-slate-400 text-xs font-medium tracking-wide">getin.click/your-name</span>
                                 </div>
                             </div>
                             {/* Mockup content */}

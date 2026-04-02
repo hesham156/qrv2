@@ -20,12 +20,7 @@ export default function LandingLayout({ children, lang, toggleLang, t }) {
             <header className="fixed w-full bg-white/95 backdrop-blur-xl z-50 border-b border-slate-100/50 shadow-sm transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
-                            D
-                        </div>
-                        <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">
-                            Get In Click
-                        </span>
+                        <img src="/logo192.png" alt="Logo" className="h-24 w-auto object-contain" />
                     </Link>
 
                     {/* Desktop Nav */}
@@ -96,9 +91,8 @@ export default function LandingLayout({ children, lang, toggleLang, t }) {
             <footer className="bg-[#0b1120] text-slate-300 py-16 border-t border-slate-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-12">
                     <div className="col-span-1 md:col-span-1">
-                        <div className="text-white font-black text-2xl mb-4 tracking-tight flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-sm">D</div>
-                            Get In Click
+                        <div className="text-white font-black text-2xl mb-4 tracking-tight flex items-center justify-center">
+                            <img src="/logo192.png" alt="Logo" className="h-24 w-auto object-contain brightness-0 invert" />
                         </div>
                         <p className="text-sm text-slate-400 leading-relaxed pe-4">
                             {tr.footerDesc}

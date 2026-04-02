@@ -429,8 +429,8 @@ export default function TrackerPage() {
 
                 {/* Footer Brand */}
                 <div className="mt-16 flex flex-col items-center text-slate-300">
-                    <img src="/logo.svg" className="h-6 grayscale opacity-30 mb-4" alt="QRv2" />
-                    <p className="text-xs font-bold uppercase tracking-widest">Powered by QRv2 Digital Assets</p>
+                    <img src="/logo192.png" className="h-24 grayscale opacity-30 object-contain mb-4" alt="Logo" />
+                    <p className="text-xs font-bold uppercase tracking-widest">Powered by Digital Assets</p>
                 </div>
             </div>
         </div>
