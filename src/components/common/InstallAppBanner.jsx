@@ -6,26 +6,33 @@ export default function InstallAppBanner({ installPrompt, lang }) {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    // Show banner if prompt is available and not dismissed recently
-    if (installPrompt) {
-      const isDismissed = localStorage.getItem('pwa_banner_dismissed');
-      // Only show if not dismissed, or you can add a time expiry (e.g. show again after 7 days)
-      if (!isDismissed) {
-        setShow(true);
-      }
+    // Check if already installed
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const isDismissed = localStorage.getItem('pwa_banner_dismissed');
+    
+    // Only show if not dismissed and not already installed
+    if (!isStandalone && !isDismissed) {
+      setShow(true);
     }
   }, [installPrompt]);
 
   const handleInstall = async () => {
-    if (!installPrompt) return;
-    try {
-      installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setShow(false);
+    if (installPrompt) {
+      try {
+        installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          setShow(false);
+        }
+      } catch (e) {
+        console.error('Install prompt error:', e);
       }
-    } catch (e) {
-      console.error('Install prompt error:', e);
+    } else {
+      // Fallback for iOS or desktop where prompt is null
+      const msg = lang === 'ar' 
+        ? 'لتحميل التطبيق، اضغط على زر المشاركة أو القائمة في متصفحك واختر "إضافة إلى الشاشة الرئيسية" (Add to Home Screen).'
+        : 'To install the app, tap the Share or Menu button in your browser and select "Add to Home Screen".';
+      alert(msg);
     }
   };
 
